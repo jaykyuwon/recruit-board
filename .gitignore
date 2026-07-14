@@ -1,0 +1,12 @@
+# 비밀 값 — 절대 커밋 금지
+.env
+
+# 실제 사용자 데이터 (이메일 / 비밀번호 해시 / 공고 / 상점 이미지)
+data/
+data.json
+
+# 의존성 / OS / 에디터 잡파일
+node_modules/
+.DS_Store
+Thumbs.db
+*.log

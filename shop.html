@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>상점 — 모집 게시판</title>
+<script>
+  if (!localStorage.getItem("recruit-session") && !sessionStorage.getItem("recruit-session")) {
+    location.replace("login.html");
+  }
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --accent-strong: hsl(217, 85%, 38%);
+    --accent-soft: hsl(217, 80%, 96%);
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-6: 24px; --space-8: 32px; --space-12: 48px;
+    --radius: 8px;
+    --text-sm: 0.8125rem; --text-base: 1rem; --text-lg: 1.25rem; --text-xl: 1.5625rem;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-12); }
+
+  header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap;
+  }
+  header h1 { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; }
+  header p { color: var(--fg-soft); font-size: var(--text-sm); margin-top: var(--space-1); }
+  .user-box { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .nav-btn {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-radius: var(--radius); font: inherit; font-size: var(--text-sm); font-weight: 600;
+    padding: var(--space-1) var(--space-3); cursor: pointer; text-decoration: none;
+    display: inline-block; transition: border-color 150ms ease-out;
+  }
+  .nav-btn:hover { border-color: var(--fg); }
+  .nav-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .balance {
+    margin-top: var(--space-6);
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    flex-wrap: wrap;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-6);
+  }
+  .balance .label { font-size: var(--text-sm); font-weight: 600; color: var(--accent-strong); }
+  .balance .amount { font-size: var(--text-xl); font-weight: 800; color: var(--accent-strong); letter-spacing: -0.01em; }
+  .balance .note { font-size: var(--text-sm); color: var(--fg-soft); flex-basis: 100%; }
+
+  .section { margin-top: var(--space-8); }
+  .section h2 { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.01em; }
+  .section .desc { font-size: var(--text-sm); color: var(--fg-soft); margin-top: var(--space-1); }
+
+  .item-grid {
+    margin-top: var(--space-4);
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+  }
+  .item {
+    border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .item.equipped { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .swatch { height: 72px; width: 100%; background: var(--surface); }
+  .item-body { padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
+  .item-name { font-weight: 700; font-size: var(--text-base); }
+  .item-price { font-size: var(--text-sm); color: var(--fg-soft); font-weight: 600; }
+  .item-actions { margin-top: auto; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-size: var(--text-sm); font-weight: 700;
+    border-radius: var(--radius); padding: var(--space-2) var(--space-4);
+    cursor: pointer; min-height: 40px; flex: 1;
+    transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+  }
+  .btn-buy { background: var(--accent); color: var(--bg); border: 1px solid var(--accent); }
+  .btn-buy:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn-equip { background: var(--bg); color: var(--accent); border: 1px solid var(--accent); }
+  .btn-equip:hover { background: var(--accent-soft); }
+  .btn-unequip { background: var(--bg); color: var(--fg-soft); border: 1px solid var(--line); }
+  .btn-unequip:hover { color: var(--fg); border-color: var(--fg); }
+  .btn:disabled { background: var(--surface); color: var(--fg-soft); border: 1px solid var(--line); cursor: not-allowed; }
+  .tag {
+    display: inline-block; font-size: var(--text-sm); font-weight: 700;
+    color: var(--accent); background: var(--accent-soft);
+    border: 1px solid var(--accent); border-radius: var(--space-1);
+    padding: 0 var(--space-2); align-self: flex-start;
+  }
+  .empty-items { font-size: var(--text-sm); color: var(--fg-soft); margin-top: var(--space-3); }
+
+  @media (max-width: 480px) {
+    .container { padding: var(--space-6) var(--space-4) var(--space-8); }
+    header h1 { font-size: var(--text-lg); }
+    .item-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>포인트 상점</h1>
+      <p>모은 포인트로 나만의 배경을 꾸며보세요. 구매해도 랭킹(누적 포인트)은 그대로예요.</p>
+    </div>
+    <div class="user-box">
+      <a class="nav-btn" href="index.html">게시판으로</a>
+      <a class="nav-btn" href="ranking.html">랭킹</a>
+      <button type="button" class="nav-btn" id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="balance">
+    <div>
+      <div class="label">보유 포인트</div>
+      <div class="amount" id="balance-amount">0점</div>
+    </div>
+    <p class="note">포인트는 활동으로 모으고, 상점에서 사용합니다. 사용한 포인트도 랭킹 누적에는 남습니다.</p>
+  </div>
+
+  <div id="sections"></div>
+</div>
+
+<script>
+window.__storeReady.then(function () {
+  var USERS_KEY = "recruit-users";
+  var SCORES_KEY = "recruit-scores";
+  var SHOP_KEY = "recruit-shop";
+  var SESSION_KEY = "recruit-session";
+
+  var userId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  if (!userId) return;
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+
+  document.getElementById("logout-btn").addEventListener("click", function () {
+    window.Api.call("logout", {}).catch(function () {});
+    window.Api.clearAuth();
+    location.replace("login.html");
+  });
+
+  var TYPES = [
+    { key: "banner", label: "개인 페이지 배너", desc: "내 정보 페이지 상단에 표시됩니다." },
+    { key: "postbg", label: "개인 공고 배경", desc: "내가 올린 공고 카드의 배경으로 모두에게 보입니다." },
+    { key: "sitebg", label: "사이트 배경", desc: "로그인한 내 화면 전체 배경으로 적용됩니다." }
+  ];
+
+  function syncAction(action, payload) {
+    return window.Api.call(action, payload)
+      .then(function () { render(); })
+      .catch(function (e) { alert(e.message || "요청이 실패했습니다."); });
+  }
+
+  function render() {
+    var users = loadJSON(USERS_KEY, {});
+    var scores = loadJSON(SCORES_KEY, {});
+    var shop = window.Api.getShop();
+    var me = users[userId] || {};
+    var owned = me.owned || [];
+    var equipped = me.equipped || {};
+    var balance = scores[userId] || 0;
+
+    document.getElementById("balance-amount").textContent = balance + "점";
+
+    var container = document.getElementById("sections");
+    container.innerHTML = "";
+
+    TYPES.forEach(function (t) {
+      var section = document.createElement("div");
+      section.className = "section";
+
+      var h2 = document.createElement("h2");
+      h2.textContent = t.label;
+      var desc = document.createElement("p");
+      desc.className = "desc";
+      desc.textContent = t.desc;
+      section.appendChild(h2);
+      section.appendChild(desc);
+
+      var items = shop.filter(function (it) { return it.type === t.key; });
+      if (items.length === 0) {
+        var em = document.createElement("p");
+        em.className = "empty-items";
+        em.textContent = "아직 등록된 상품이 없습니다.";
+        section.appendChild(em);
+        container.appendChild(section);
+        return;
+      }
+
+      var grid = document.createElement("div");
+      grid.className = "item-grid";
+
+      items.forEach(function (it) {
+        var isOwned = owned.indexOf(it.id) !== -1;
+        var isEquipped = equipped[t.key] === it.id;
+
+        var card = document.createElement("div");
+        card.className = "item" + (isEquipped ? " equipped" : "");
+
+        var swatch = document.createElement("div");
+        swatch.className = "swatch";
+        swatch.style.background = it.value;
+        swatch.style.backgroundSize = "cover";
+        swatch.style.backgroundPosition = "center";
+        card.appendChild(swatch);
+
+        var body = document.createElement("div");
+        body.className = "item-body";
+
+        var name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = it.name;
+        body.appendChild(name);
+
+        var price = document.createElement("span");
+        price.className = "item-price";
+        price.textContent = it.price === 0 ? "무료" : (it.price + "점");
+        body.appendChild(price);
+
+        if (isEquipped) {
+          var tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = "장착 중";
+          body.appendChild(tag);
+        }
+
+        var actions = document.createElement("div");
+        actions.className = "item-actions";
+
+        if (!isOwned) {
+          var buyBtn = document.createElement("button");
+          buyBtn.type = "button";
+          buyBtn.className = "btn btn-buy";
+          if (balance < it.price) {
+            buyBtn.textContent = "포인트 부족";
+            buyBtn.disabled = true;
+          } else {
+            buyBtn.textContent = "구매";
+            buyBtn.addEventListener("click", function () {
+              if (!confirm('"' + it.name + '"을(를) ' + it.price + '점에 구매할까요?')) return;
+              syncAction("buyItem", { id: it.id });
+            });
+          }
+          actions.appendChild(buyBtn);
+        } else if (isEquipped) {
+          var unequipBtn = document.createElement("button");
+          unequipBtn.type = "button";
+          unequipBtn.className = "btn btn-unequip";
+          unequipBtn.textContent = "장착 해제";
+          unequipBtn.addEventListener("click", function () {
+            syncAction("equipItem", { type: t.key, id: null });
+          });
+          actions.appendChild(unequipBtn);
+        } else {
+          var equipBtn = document.createElement("button");
+          equipBtn.type = "button";
+          equipBtn.className = "btn btn-equip";
+          equipBtn.textContent = "장착";
+          equipBtn.addEventListener("click", function () {
+            syncAction("equipItem", { type: t.key, id: it.id });
+          });
+          actions.appendChild(equipBtn);
+        }
+
+        body.appendChild(actions);
+        card.appendChild(body);
+        grid.appendChild(card);
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  }
+
+  render();
+});
+</script>
+
+</body>
+</html>

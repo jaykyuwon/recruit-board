@@ -1,0 +1,26 @@
+services:
+  recruit-board:
+    build: .
+    container_name: recruit-board
+    ports:
+      - "8931:8931"
+    environment:
+      # 최초 시드 관리자 비밀번호 (.env). 기존 data.json 이 있으면 무시됨.
+      - ADMIN_INITIAL_PW=${ADMIN_INITIAL_PW:-}
+    volumes:
+      # 회원/공고/점수 데이터를 호스트에 보존 (컨테이너를 지워도 유지)
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # 고정 도메인 터널 (jayden730.site) — .env에 TUNNEL_TOKEN 설정 후
+  # `docker compose --profile tunnel up -d` 로 활성화
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: recruit-tunnel
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - recruit-board
+    restart: unless-stopped
+    profiles: ["tunnel"]

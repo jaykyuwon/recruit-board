@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>랭킹 — 모집 게시판</title>
+<script>
+  // 로그인하지 않았으면 로그인 페이지로
+  if (!localStorage.getItem("recruit-session") && !sessionStorage.getItem("recruit-session")) {
+    location.replace("login.html");
+  }
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --radius: 8px;
+    --text-sm: 0.8125rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5625rem;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    color: var(--fg-soft);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+  }
+  .user-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .nav-btn {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-3);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: border-color 150ms ease-out;
+  }
+  .nav-btn:hover { border-color: var(--fg); }
+  .nav-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .rank-list {
+    list-style: none;
+    margin-top: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .rank-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-6);
+  }
+  .rank-row.top1 {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+  .rank-row.top1 .rank-meta { color: hsl(0, 0%, 70%); }
+  .rank-row.me:not(.top1) { border-color: var(--accent); }
+  .rank-num {
+    width: 44px;
+    flex-shrink: 0;
+    font-size: var(--text-lg);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--fg);
+    font-weight: 700;
+    overflow: hidden;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  .rank-row.top1 .avatar {
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .rank-who {
+    flex: 1;
+    min-width: 0;
+  }
+  .rank-email {
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .rank-meta {
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .tier {
+    display: inline-block;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    border-radius: var(--space-1);
+    padding: 0 var(--space-2);
+    margin-left: var(--space-2);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  /* 새싹 — 싱그러운 연두 */
+  .tier-seed {
+    color: hsl(140, 55%, 26%);
+    background: hsl(140, 50%, 90%);
+    border: 1px solid hsl(140, 40%, 72%);
+  }
+  /* 브론즈 — 구릿빛 */
+  .tier-bronze {
+    color: hsl(0, 0%, 100%);
+    background: hsl(25, 52%, 44%);
+    border: 1px solid hsl(25, 52%, 44%);
+  }
+  /* 실버 — 은빛 */
+  .tier-silver {
+    color: hsl(210, 22%, 24%);
+    background: hsl(210, 14%, 72%);
+    border: 1px solid hsl(210, 14%, 72%);
+  }
+  /* 골드 — 금빛 */
+  .tier-gold {
+    color: hsl(40, 85%, 22%);
+    background: hsl(44, 88%, 54%);
+    border: 1px solid hsl(44, 88%, 54%);
+  }
+  /* 플래티넘 — 청록빛 백금 */
+  .tier-platinum {
+    color: hsl(0, 0%, 100%);
+    background: hsl(190, 45%, 46%);
+    border: 1px solid hsl(190, 45%, 46%);
+  }
+  /* 다이아 — 영롱한 하늘빛 */
+  .tier-dia {
+    color: hsl(0, 0%, 100%);
+    background: hsl(205, 85%, 55%);
+    border: 1px solid hsl(205, 85%, 55%);
+    font-weight: 800;
+  }
+  /* 1위 행(어두운 배경)에서도 컬러 뱃지가 도드라지도록 얇은 링 */
+  .rank-row.top1 .tier {
+    box-shadow: 0 0 0 1px hsla(0, 0%, 100%, 0.35);
+  }
+  .tier-legend {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .me-chip {
+    display: inline-block;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--space-1);
+    padding: 0 var(--space-2);
+    margin-left: var(--space-2);
+    vertical-align: middle;
+  }
+  .rank-row.top1 .me-chip {
+    color: var(--bg);
+    border-color: var(--bg);
+  }
+  .rank-score {
+    flex-shrink: 0;
+    font-size: var(--text-lg);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .empty {
+    margin-top: var(--space-12);
+    text-align: center;
+    color: var(--fg-soft);
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: var(--space-6) var(--space-4) var(--space-8); }
+    header { gap: var(--space-3); }
+    header h1 { font-size: var(--text-lg); }
+    .user-box { flex-wrap: wrap; gap: var(--space-2); }
+    .nav-btn { padding: var(--space-2) var(--space-3); min-height: 40px; display: inline-flex; align-items: center; }
+    /* 순위 행: 여백·간격 축소로 좁은 화면에 맞춤 */
+    .rank-row { gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+    .rank-num { width: 34px; font-size: var(--text-base); }
+    .rank-score { font-size: var(--text-base); }
+    .tier { margin-left: var(--space-1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>랭킹</h1>
+      <p>누적 포인트로 순위가 매겨집니다. 상점에서 포인트를 써도 순위는 그대로예요.</p>
+    </div>
+    <div class="user-box">
+      <a class="nav-btn" href="index.html">게시판으로</a>
+      <a class="nav-btn" href="shop.html">상점</a>
+      <button type="button" class="nav-btn" id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <p class="tier-legend">등급 기준 —
+    <span class="tier tier-seed">새싹</span> 0~10점 ·
+    <span class="tier tier-bronze">브론즈</span> 11~50점 ·
+    <span class="tier tier-silver">실버</span> 51~200점 ·
+    <span class="tier tier-gold">골드</span> 201~500점 ·
+    <span class="tier tier-platinum">플래티넘</span> 501~1000점 ·
+    <span class="tier tier-dia">다이아</span> 1001점~
+  </p>
+
+  <ol class="rank-list" id="rank-list"></ol>
+  <p class="empty" id="empty" hidden>아직 순위에 오른 회원이 없습니다.</p>
+</div>
+
+<script>
+window.__storeReady.then(function () {
+  var USERS_KEY = "recruit-users";
+  var SCORES_KEY = "recruit-scores";
+  var SESSION_KEY = "recruit-session";
+  var POSTS_KEY = "recruit-posts";
+  var ADMIN_EMAIL = "jaydenkyuwon@gmail.com";
+
+  var userId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  if (!userId) return;
+
+  function loadJSON(key, fallback) {
+    try {
+      return JSON.parse(localStorage.getItem(key)) || fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  var users = loadJSON(USERS_KEY, {});
+  var scores = loadJSON(SCORES_KEY, {});
+  var posts = loadJSON(POSTS_KEY, []);
+
+  document.getElementById("logout-btn").addEventListener("click", function () {
+    window.Api.call("logout", {}).catch(function () {});
+    window.Api.clearAuth();
+    location.replace("login.html");
+  });
+
+  // 관리자 제외, 누적 포인트(잔액+사용액) 내림차순 — 구매로 잔액이 줄어도 순위는 유지
+  var ranked = Object.keys(users)
+    .filter(function (email) { return email !== ADMIN_EMAIL; })
+    .map(function (email) {
+      return {
+        email: email,
+        nickname: users[email].nickname || email,
+        temp: (typeof users[email].temp === "number") ? users[email].temp : 36.5,
+        score: (scores[email] || 0) + (users[email].spent || 0),
+        joinedAt: users[email].createdAt || 0,
+        authored: posts.filter(function (p) { return p.authorId === email; }).length,
+        applied: posts.filter(function (p) { return (p.applicants || []).indexOf(email) !== -1; }).length
+      };
+    })
+    .sort(function (a, b) {
+      return (b.score - a.score) || (a.joinedAt - b.joinedAt);
+    });
+
+  var list = document.getElementById("rank-list");
+  var empty = document.getElementById("empty");
+
+  // 점수 → 등급 (새싹 0~10, 브론즈 11~50, 실버 51~200, 골드 201~500, 플래티넘 501~1000, 다이아 1001~)
+  function tierOf(score) {
+    if (score <= 10) return { name: "새싹", cls: "tier-seed" };
+    if (score <= 50) return { name: "브론즈", cls: "tier-bronze" };
+    if (score <= 200) return { name: "실버", cls: "tier-silver" };
+    if (score <= 500) return { name: "골드", cls: "tier-gold" };
+    if (score <= 1000) return { name: "플래티넘", cls: "tier-platinum" };
+    return { name: "다이아", cls: "tier-dia" };
+  }
+
+  // 매너온도 색상: 10도 구간마다 변화 (낮으면 파랑=차가움, 높으면 빨강=뜨거움)
+  function tempColor(t) {
+    var hues = [225, 210, 190, 150, 95, 50, 35, 22, 10, 0];
+    var n = (typeof t === "number") ? t : 36.5;
+    var idx = Math.max(0, Math.min(9, Math.floor(n / 10)));
+    return "hsl(" + hues[idx] + ", 80%, 42%)";
+  }
+
+  var prevScore = null;
+  var prevRank = 0;
+  ranked.forEach(function (r, i) {
+    // 동점자는 같은 순위
+    var rank = (r.score === prevScore) ? prevRank : i + 1;
+    prevScore = r.score;
+    prevRank = rank;
+
+    var li = document.createElement("li");
+    li.className = "rank-row";
+    if (rank === 1) li.classList.add("top1");
+    if (r.email === userId) li.classList.add("me");
+
+    var num = document.createElement("span");
+    num.className = "rank-num";
+    num.textContent = rank + "위";
+
+    var avatar;
+    var u = users[r.email] || {};
+    if (u.photo) {
+      avatar = document.createElement("img");
+      avatar.src = u.photo;
+      avatar.alt = "";
+    } else {
+      avatar = document.createElement("span");
+      avatar.textContent = r.nickname.charAt(0).toUpperCase();
+      avatar.style.fontSize = "14px";
+      avatar.setAttribute("aria-hidden", "true");
+    }
+    avatar.className = "avatar";
+    avatar.style.width = "32px";
+    avatar.style.height = "32px";
+
+    var who = document.createElement("div");
+    who.className = "rank-who";
+    var emailEl = document.createElement("p");
+    emailEl.className = "rank-email";
+    emailEl.textContent = r.nickname;
+
+    var tier = tierOf(r.score);
+    var tierEl = document.createElement("span");
+    tierEl.className = "tier " + tier.cls;
+    tierEl.textContent = tier.name;
+    emailEl.appendChild(tierEl);
+
+    if (r.email === userId) {
+      var meChip = document.createElement("span");
+      meChip.className = "me-chip";
+      meChip.textContent = "나";
+      emailEl.appendChild(meChip);
+    }
+    var metaEl = document.createElement("p");
+    metaEl.className = "rank-meta";
+    metaEl.textContent = "공고 " + r.authored + "건 · 참여 " + r.applied + "건 · ";
+    var tempSpan = document.createElement("span");
+    tempSpan.textContent = "🌡 " + r.temp.toFixed(1) + "°C";
+    tempSpan.style.color = tempColor(r.temp);
+    tempSpan.style.fontWeight = "700";
+    metaEl.appendChild(tempSpan);
+    who.appendChild(emailEl);
+    who.appendChild(metaEl);
+
+    var scoreEl = document.createElement("span");
+    scoreEl.className = "rank-score";
+    scoreEl.textContent = r.score + "점";
+
+    li.appendChild(num);
+    li.appendChild(avatar);
+    li.appendChild(who);
+    li.appendChild(scoreEl);
+    list.appendChild(li);
+  });
+
+  empty.hidden = ranked.length > 0;
+});
+</script>
+
+</body>
+</html>

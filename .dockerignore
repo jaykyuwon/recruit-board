@@ -1,0 +1,11 @@
+# 데이터는 이미지에 넣지 않음 (볼륨으로 관리)
+data/
+data.json
+
+# 도커 관련 파일
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 비밀 값
+.env

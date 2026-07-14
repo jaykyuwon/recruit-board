@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>로그인 — 모집 게시판</title>
+<script>
+  // 이미 로그인돼 있으면 게시판으로
+  if (localStorage.getItem("recruit-session") || sessionStorage.getItem("recruit-session")) {
+    location.replace("index.html");
+  }
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --accent-strong: hsl(217, 85%, 38%);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --radius: 8px;
+    --shadow: 0 4px 24px hsla(0, 0%, 0%, 0.12);
+    --text-sm: 0.8125rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5625rem;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+  }
+
+  .login-card {
+    width: min(400px, 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-8);
+  }
+  .login-card h1 {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .login-card > p {
+    color: var(--fg-soft);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-8);
+  }
+
+  .field { margin-bottom: var(--space-6); }
+  .field label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    margin-bottom: var(--space-2);
+  }
+  input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    transition: border-color 150ms ease-out;
+  }
+  input[type="email"]:focus, input[type="password"]:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+
+  .remember {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: var(--space-6);
+  }
+  .remember input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .error {
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--fg);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 700;
+    padding: var(--space-3) var(--space-6);
+    cursor: pointer;
+    transition: background 150ms ease-out;
+  }
+  .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .switch {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    margin-top: var(--space-6);
+  }
+  .switch button {
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+  }
+  .switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (max-width: 480px) {
+    body { padding: var(--space-4); }
+    .login-card { padding: var(--space-6); }
+    .login-card h1 { font-size: var(--text-lg); }
+    .btn-primary { min-height: 48px; }
+    /* 회원가입/로그인 전환 링크 터치 영역 확대 */
+    .switch button { padding: var(--space-2); }
+  }
+</style>
+</head>
+<body>
+
+<main class="login-card">
+  <h1>모집 게시판</h1>
+  <p id="mode-desc">로그인하고 라이벌과 동료를 찾아보세요.</p>
+
+  <form id="auth-form" novalidate>
+    <div class="field" id="email-field" hidden>
+      <label for="email">이메일</label>
+      <input type="email" id="email" autocomplete="email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label for="nickname">닉네임</label>
+      <input type="text" id="nickname" required maxlength="20" autocomplete="username" placeholder="닉네임 (20자 이내)" />
+    </div>
+    <div class="field">
+      <label for="password">비밀번호</label>
+      <input type="password" id="password" required minlength="6" autocomplete="current-password"
+             placeholder="6자 이상" />
+    </div>
+
+    <label class="remember">
+      <input type="checkbox" id="auto-login" checked />
+      자동 로그인
+    </label>
+
+    <p class="error" id="error" hidden></p>
+
+    <button type="submit" class="btn-primary" id="submit-btn">로그인</button>
+  </form>
+
+  <p class="switch" id="switch-line">
+    계정이 없나요? <button type="button" id="toggle-mode">회원가입</button>
+  </p>
+</main>
+
+<script>
+window.__storeReady.then(function () {
+  var USERS_KEY = "recruit-users";
+  var SESSION_KEY = "recruit-session";
+  var mode = "login"; // "login" | "signup"
+
+  var form = document.getElementById("auth-form");
+  var emailField = document.getElementById("email-field");
+  var emailInput = document.getElementById("email");
+  var nickInput = document.getElementById("nickname");
+  var pwInput = document.getElementById("password");
+  var autoLogin = document.getElementById("auto-login");
+  var errorBox = document.getElementById("error");
+  var modeDesc = document.getElementById("mode-desc");
+  var submitBtn = document.getElementById("submit-btn");
+  var switchLine = document.getElementById("switch-line");
+  var toggleBtn = document.getElementById("toggle-mode");
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.hidden = false;
+  }
+
+  function setMode(next) {
+    mode = next;
+    errorBox.hidden = true;
+    if (mode === "login") {
+      modeDesc.textContent = "닉네임으로 로그인하고 라이벌과 동료를 찾아보세요.";
+      submitBtn.textContent = "로그인";
+      pwInput.autocomplete = "current-password";
+      emailField.hidden = true;
+      switchLine.firstChild.textContent = "계정이 없나요? ";
+      toggleBtn.textContent = "회원가입";
+    } else {
+      modeDesc.textContent = "새 계정을 만들어 시작하세요.";
+      submitBtn.textContent = "회원가입";
+      pwInput.autocomplete = "new-password";
+      emailField.hidden = false;
+      switchLine.firstChild.textContent = "이미 계정이 있나요? ";
+      toggleBtn.textContent = "로그인";
+    }
+  }
+
+  toggleBtn.addEventListener("click", function () {
+    setMode(mode === "login" ? "signup" : "login");
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    errorBox.hidden = true;
+
+    var email = emailInput.value.trim().toLowerCase();
+    var nickname = nickInput.value.trim();
+    var pw = pwInput.value;
+
+    if (!nickname || nickname.length > 20) {
+      showError("닉네임은 1~20자로 입력해주세요.");
+      return;
+    }
+    if (pw.length < 6) {
+      showError("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+    if (mode === "signup" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError("올바른 이메일 주소를 입력해주세요.");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    var req = mode === "signup"
+      ? window.Api.call("signup", { email: email, nickname: nickname, password: pw })
+      : window.Api.call("login", { nickname: nickname, password: pw });
+
+    req.then(function (r) {
+      // 자동 로그인이면 localStorage(브라우저 껐다 켜도 유지),
+      // 아니면 sessionStorage(탭 닫으면 로그아웃)
+      window.Api.setAuth(r.token, r.email, autoLogin.checked);
+      location.replace("index.html");
+    }).catch(function (e2) {
+      submitBtn.disabled = false;
+      showError(e2.message || "요청이 실패했습니다.");
+    });
+  });
+});
+</script>
+
+</body>
+</html>

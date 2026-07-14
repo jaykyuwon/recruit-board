@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>관리 — 모집 게시판</title>
+<script>
+  // 로그인 필요 (관리자 여부는 상태 로드 후 확인)
+  (function () {
+    var s = sessionStorage.getItem("recruit-session") || localStorage.getItem("recruit-session");
+    if (!s) location.replace("login.html");
+  })();
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --accent-strong: hsl(217, 85%, 38%);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --radius: 8px;
+    --text-sm: 0.8125rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5625rem;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    color: var(--fg-soft);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+  }
+  .user-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .nav-btn {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-3);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: border-color 150ms ease-out;
+  }
+  .nav-btn:hover { border-color: var(--fg); }
+  .nav-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .post-list {
+    list-style: none;
+    margin-top: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .post {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-6);
+  }
+  .post-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .post h2 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    flex: 1;
+  }
+  .cat-chip {
+    flex-shrink: 0;
+    border: 1px solid var(--fg);
+    border-radius: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    padding: var(--space-1) var(--space-2);
+    margin-top: var(--space-1);
+    white-space: nowrap;
+  }
+  .post .detail {
+    margin-top: var(--space-2);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .post .meta {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .post .meta strong { color: var(--fg); }
+  .approve-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .btn {
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    transition: opacity 150ms ease-out, border-color 150ms ease-out;
+  }
+  .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .btn-approve {
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+  }
+  .btn-approve:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn-reject {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+  }
+  .btn-reject:hover { border-color: var(--fg); }
+
+  .empty {
+    margin-top: var(--space-12);
+    text-align: center;
+    color: var(--fg-soft);
+  }
+
+  /* ── 탭 ─────────────────────── */
+  .tabs {
+    display: flex;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--fg-soft);
+    padding: var(--space-3) var(--space-1);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab .count {
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    font-weight: 500;
+    margin-left: var(--space-1);
+  }
+
+  /* ── 회원 관리 ───────────────── */
+  .member-list {
+    list-style: none;
+    margin-top: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .member {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-6);
+  }
+  .member-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .member-head .email {
+    font-weight: 700;
+    flex: 1;
+    word-break: break-all;
+  }
+  .badge {
+    background: var(--fg);
+    color: var(--bg);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--space-1);
+    white-space: nowrap;
+  }
+  .badge-off {
+    background: hsl(0, 0%, 55%);
+  }
+  .member.is-disabled {
+    background: var(--surface);
+  }
+  .member.is-disabled .member-head .email {
+    color: var(--fg-soft);
+    text-decoration: line-through;
+  }
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--fg);
+    font-weight: 700;
+    overflow: hidden;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  .score-chip {
+    border: 1px solid var(--fg);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .member .meta {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .record-group { margin-top: var(--space-4); }
+  .record-group h3 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    margin-bottom: var(--space-1);
+  }
+  .record {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    padding: var(--space-1) 0;
+  }
+  .record .none { color: var(--fg-soft); }
+  .kick-btn {
+    background: var(--bg);
+    color: var(--fg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+  }
+  .kick-btn:hover { color: var(--fg); border-color: var(--fg); }
+  .kick-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .score-adjust {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px dashed var(--line);
+  }
+  .score-adjust label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    margin-right: var(--space-1);
+  }
+  .score-adjust input {
+    width: 90px;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    transition: border-color 150ms ease-out;
+  }
+  .score-adjust input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+
+  /* ── 상점 관리 ───────────────── */
+  .shop-form-card h2 { font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--space-2); }
+  .shop-field { margin-bottom: var(--space-4); }
+  .shop-field label {
+    display: block; font-size: var(--text-sm); font-weight: 600;
+    color: var(--fg-soft); margin-bottom: var(--space-2);
+  }
+  .shop-field input, .shop-select {
+    width: 100%; font: inherit; font-size: var(--text-base); color: var(--fg);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); transition: border-color 150ms ease-out;
+  }
+  .shop-field input:focus, .shop-select:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+  .shop-upload-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  #shop-image-info { margin-top: var(--space-1); color: var(--accent-strong); font-weight: 600; }
+  .shop-preview-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .shop-preview {
+    flex: 1; height: 48px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--surface);
+  }
+  .shop-swatch {
+    width: 40px; height: 24px; border-radius: var(--space-1);
+    border: 1px solid var(--line); flex-shrink: 0; display: inline-block;
+  }
+  #shop-list .meta { word-break: break-all; }
+
+  @media (max-width: 480px) {
+    .container { padding: var(--space-6) var(--space-4) var(--space-8); }
+
+    /* 헤더: 세로로 쌓아 네비 버튼 찌그러짐 방지 */
+    header { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+    header h1 { font-size: var(--text-lg); }
+    .user-box { width: 100%; flex-wrap: wrap; gap: var(--space-2); }
+    .nav-btn { padding: var(--space-2) var(--space-3); min-height: 40px; display: inline-flex; align-items: center; }
+
+    /* 탭: 간격 축소 + 균등 분배 */
+    .tabs { gap: var(--space-3); margin-top: var(--space-6); }
+    .tab { font-size: var(--text-sm); padding: var(--space-3) 0; flex: 1; text-align: center; white-space: nowrap; }
+
+    .post { padding: var(--space-4); }
+
+    /* 승인/점수 버튼 줄: 세로로 펼치고 터치 크기 확대 */
+    .approve-row { flex-wrap: wrap; }
+    .approve-row .btn { flex: 1; min-height: 44px; }
+
+    /* 점수·온도 조정: 한 줄에 다 넣지 말고 감싸서 배치 */
+    .score-adjust { flex-wrap: wrap; gap: var(--space-2); }
+    .score-adjust label { width: 100%; margin-right: 0; }
+    .score-adjust input { flex: 1 1 80px; width: auto; font-size: var(--text-base); min-height: 44px; }
+    .score-adjust .btn { flex: 1 1 auto; min-height: 44px; }
+    .score-adjust .btn[style*="margin-left"] { margin-left: 0 !important; }
+    .kick-btn { min-height: 40px; padding: var(--space-2) var(--space-3); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>관리</h1>
+      <p>점수를 직접 설정했거나 모집 인원이 4명 이상인 공고는 승인해야 게시판에 올라갑니다.</p>
+    </div>
+    <div class="user-box">
+      <a class="nav-btn" href="index.html">게시판으로</a>
+      <button type="button" class="nav-btn" id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="관리 메뉴">
+    <button class="tab" id="tab-pending" role="tab" aria-selected="true" aria-controls="panel-pending">
+      공고 승인<span class="count" id="count-pending"></span>
+    </button>
+    <button class="tab" id="tab-members" role="tab" aria-selected="false" aria-controls="panel-members">
+      회원 관리<span class="count" id="count-members"></span>
+    </button>
+    <button class="tab" id="tab-reports" role="tab" aria-selected="false" aria-controls="panel-reports">
+      신고 처리<span class="count" id="count-reports"></span>
+    </button>
+    <button class="tab" id="tab-shop" role="tab" aria-selected="false" aria-controls="panel-shop">
+      상점 관리<span class="count" id="count-shop"></span>
+    </button>
+  </div>
+
+  <div id="panel-pending" role="tabpanel" aria-labelledby="tab-pending">
+    <ul class="post-list" id="pending-list"></ul>
+    <p class="empty" id="empty" hidden>승인 대기 중인 공고가 없습니다.</p>
+  </div>
+
+  <div id="panel-members" role="tabpanel" aria-labelledby="tab-members" hidden>
+    <ul class="member-list" id="member-list"></ul>
+    <p class="empty" id="empty-members" hidden>가입한 회원이 없습니다.</p>
+  </div>
+
+  <div id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" hidden>
+    <ul class="post-list" id="report-list"></ul>
+    <p class="empty" id="empty-reports" hidden>처리 대기 중인 신고가 없습니다.</p>
+  </div>
+
+  <div id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
+    <div class="post shop-form-card">
+      <h2>상품 추가</h2>
+      <p class="hint" style="margin-bottom: var(--space-4);">
+        회원이 포인트로 구매할 배경을 등록합니다. 색상(#1a1a2e)이나 그라데이션(linear-gradient(...))을
+        직접 입력하거나, 아래 <strong>이미지 업로드</strong> 버튼으로 PNG·JPG·GIF 파일을 넣을 수 있습니다.
+        (GIF는 움직임 그대로 유지됩니다.)
+      </p>
+      <form id="shop-form">
+        <div class="shop-field">
+          <label for="shop-type">종류</label>
+          <select id="shop-type" class="shop-select">
+            <option value="banner">개인 페이지 배너</option>
+            <option value="postbg">개인 공고 배경</option>
+            <option value="sitebg">사이트 배경</option>
+          </select>
+        </div>
+        <div class="shop-field">
+          <label for="shop-name">상품 이름</label>
+          <input type="text" id="shop-name" maxlength="40" placeholder="예: 오로라 그라데이션" />
+        </div>
+        <div class="shop-field">
+          <label for="shop-price">가격 (점)</label>
+          <input type="number" id="shop-price" min="0" max="1000000" value="50" />
+        </div>
+        <div class="shop-field">
+          <label for="shop-value">배경 값 (색상 · 그라데이션 · 이미지)</label>
+          <input type="text" id="shop-value" placeholder="예: linear-gradient(135deg,#7b4dff,#00d4ff)" />
+          <div class="shop-upload-row">
+            <button type="button" class="nav-btn" id="shop-image-btn">🖼 이미지 업로드 (PNG·JPG·GIF)</button>
+            <button type="button" class="nav-btn" id="shop-image-clear" hidden>이미지 지우기</button>
+            <input type="file" id="shop-image-input" accept="image/png,image/jpeg,image/gif" hidden />
+          </div>
+          <p class="hint" id="shop-image-info"></p>
+        </div>
+        <div class="shop-preview-row">
+          <span class="hint">미리보기</span>
+          <div class="shop-preview" id="shop-preview"></div>
+        </div>
+        <button type="submit" class="btn btn-approve">상품 추가</button>
+      </form>
+    </div>
+    <ul class="member-list" id="shop-list"></ul>
+    <p class="empty" id="empty-shop" hidden>등록된 상품이 없습니다.</p>
+  </div>
+</div>
+
+<script>
+window.__storeReady.then(function () {
+  var STORAGE_KEY = "recruit-posts";
+  var SCORES_KEY = "recruit-scores";
+  var SESSION_KEY = "recruit-session";
+
+  var USERS_KEY = "recruit-users";
+  var ADMIN_EMAIL = "jaydenkyuwon@gmail.com";
+
+  // 관리자(소유자 또는 부여받은 관리자)만 접근 허용
+  var __st = window.Api.getState();
+  if (!__st || !__st.me || !__st.me.isAdmin) { location.replace("index.html"); return; }
+  // 최고 관리자(소유자)만 권한 부여/회수 가능
+  function isOwner() { var s = window.Api.getState(); return !!(s && s.me && s.me.isOwner); }
+
+  var posts = [];
+  var reports = [];
+  function loadFromMirror() {
+    try {
+      posts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      posts = [];
+    }
+    try {
+      reports = JSON.parse(localStorage.getItem("recruit-reports")) || [];
+    } catch (e) {
+      reports = [];
+    }
+    posts.forEach(function (p) {
+      if (!p.applicants) p.applicants = [];
+      if (!p.applicantPts) p.applicantPts = {};
+    });
+  }
+  loadFromMirror();
+
+  // 서버 액션 호출 → 최신 상태로 화면 갱신
+  function syncAction(action, payload) {
+    return window.Api.call(action, payload).then(function () {
+      loadFromMirror();
+      renderAll();
+    }).catch(function (e) {
+      alert(e.message || "요청이 실패했습니다.");
+      return window.Api.refresh().then(function () {
+        loadFromMirror();
+        renderAll();
+      });
+    });
+  }
+
+  function loadUsers() {
+    try {
+      return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  // 이메일 → 닉네임 표시용
+  function nickOf(email) {
+    var u = loadUsers()[email];
+    return (u && u.nickname) ? u.nickname : email;
+  }
+
+  // 프로필 사진(없으면 닉네임 첫 글자) 아바타
+  function avatarEl(email, size) {
+    var u = loadUsers()[email] || {};
+    var el;
+    if (u.photo) {
+      el = document.createElement("img");
+      el.src = u.photo;
+      el.alt = "";
+    } else {
+      el = document.createElement("span");
+      var nick = u.nickname || email || "?";
+      el.textContent = nick.charAt(0).toUpperCase();
+      el.style.fontSize = Math.round(size * 0.45) + "px";
+      el.setAttribute("aria-hidden", "true");
+    }
+    el.className = "avatar";
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    return el;
+  }
+
+  function getScore(email) {
+    try {
+      return (JSON.parse(localStorage.getItem(SCORES_KEY)) || {})[email] || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // 매너온도 표시용
+  function tempOf(email) {
+    var u = loadUsers()[email];
+    var t = (u && typeof u.temp === "number") ? u.temp : 36.5;
+    return t.toFixed(1) + "°C";
+  }
+  function tempRawOf(email) {
+    var u = loadUsers()[email];
+    return (u && typeof u.temp === "number") ? u.temp : 36.5;
+  }
+  // 매너온도 색상: 10도 구간마다 변화 (낮으면 파랑=차가움, 높으면 빨강=뜨거움)
+  function tempColor(t) {
+    var hues = [225, 210, 190, 150, 95, 50, 35, 22, 10, 0];
+    var n = (typeof t === "number") ? t : 36.5;
+    var idx = Math.max(0, Math.min(9, Math.floor(n / 10)));
+    return "hsl(" + hues[idx] + ", 80%, 42%)";
+  }
+
+  function formatDate(ts) {
+    var d = new Date(ts);
+    function pad(n) { return n < 10 ? "0" + n : n; }
+    return d.getFullYear() + "." + pad(d.getMonth() + 1) + "." + pad(d.getDate()) +
+           " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  var list = document.getElementById("pending-list");
+  var empty = document.getElementById("empty");
+
+  function render() {
+    var pending = posts.filter(function (p) { return p.status === "pending"; });
+    list.innerHTML = "";
+
+    pending.forEach(function (p) {
+      var li = document.createElement("li");
+      li.className = "post";
+
+      var head = document.createElement("div");
+      head.className = "post-head";
+
+      var h2 = document.createElement("h2");
+      h2.textContent = p.title;
+
+      var chip = document.createElement("span");
+      chip.className = "cat-chip";
+      chip.textContent = p.category === "rival" ? "라이벌 모집" : "동료 모집";
+
+      head.appendChild(h2);
+      head.appendChild(chip);
+
+      var detail = document.createElement("p");
+      detail.className = "detail";
+      detail.textContent = p.detail;
+
+      var meta = document.createElement("p");
+      meta.className = "meta";
+      meta.innerHTML = "";
+      var strong = document.createElement("strong");
+      strong.textContent = "참여 점수 " + p.score + "점" +
+        (p.category === "rival" ? " · 승리 점수 " + (p.winScore || 10) + "점" : "");
+      meta.appendChild(strong);
+      meta.appendChild(document.createTextNode(
+        " · 작성자 " + nickOf(p.authorId) + " (" + p.authorId + ") · 모집 인원 " + p.capacity + "명" +
+        (typeof p.deadline === "number" ? " · 기한 " + formatDate(p.deadline) + "까지" : "") +
+        " · " + formatDate(p.createdAt)
+      ));
+
+      // 점수 수정란 (수정한 값으로 승인됨)
+      var scoreEdit = document.createElement("div");
+      scoreEdit.className = "score-adjust";
+
+      var sLabel = document.createElement("label");
+      sLabel.textContent = "참여 점수";
+      sLabel.htmlFor = "ps-" + p.id;
+      var sInput = document.createElement("input");
+      sInput.type = "number";
+      sInput.id = "ps-" + p.id;
+      sInput.min = "1";
+      sInput.max = "999";
+      sInput.value = p.score;
+      scoreEdit.appendChild(sLabel);
+      scoreEdit.appendChild(sInput);
+
+      var wInput = null;
+      if (p.category === "rival") {
+        var wLabel = document.createElement("label");
+        wLabel.textContent = "승리 점수";
+        wLabel.htmlFor = "ws-" + p.id;
+        wInput = document.createElement("input");
+        wInput.type = "number";
+        wInput.id = "ws-" + p.id;
+        wInput.min = "1";
+        wInput.max = "999";
+        wInput.value = p.winScore || 10;
+        scoreEdit.appendChild(wLabel);
+        scoreEdit.appendChild(wInput);
+      }
+
+      var row = document.createElement("div");
+      row.className = "approve-row";
+
+      var rejectBtn = document.createElement("button");
+      rejectBtn.type = "button";
+      rejectBtn.className = "btn btn-reject";
+      rejectBtn.textContent = "거절";
+      rejectBtn.addEventListener("click", function () {
+        if (!confirm('"' + p.title + '" 공고를 거절할까요?')) return;
+        syncAction("rejectPost", { id: p.id });
+      });
+
+      var approveBtn = document.createElement("button");
+      approveBtn.type = "button";
+      approveBtn.className = "btn btn-approve";
+      approveBtn.textContent = "승인";
+      approveBtn.addEventListener("click", function () {
+        var score = parseInt(sInput.value, 10);
+        if (!(score >= 1 && score <= 999)) {
+          alert("참여 점수는 1~999점이어야 합니다.");
+          return;
+        }
+        var payload = { id: p.id, score: score };
+        if (wInput) {
+          var winScore = parseInt(wInput.value, 10);
+          if (!(winScore >= 1 && winScore <= 999)) {
+            alert("승리 점수는 1~999점이어야 합니다.");
+            return;
+          }
+          payload.winScore = winScore;
+        }
+        var changed = score !== p.score || (wInput && payload.winScore !== (p.winScore || 10));
+        if (changed && !confirm("신청된 점수와 다르게 수정해서 승인합니다. 계속할까요?")) return;
+        syncAction("approvePost", payload);
+      });
+
+      row.appendChild(rejectBtn);
+      row.appendChild(approveBtn);
+
+      li.appendChild(head);
+      li.appendChild(detail);
+      li.appendChild(meta);
+      li.appendChild(scoreEdit);
+      li.appendChild(row);
+      list.appendChild(li);
+    });
+
+    empty.hidden = pending.length > 0;
+    document.getElementById("count-pending").textContent = pending.length > 0 ? " " + pending.length : "";
+  }
+
+  /* ── 회원 관리 ───────────────── */
+  var memberList = document.getElementById("member-list");
+  var emptyMembers = document.getElementById("empty-members");
+
+  var statusLabel = { active: "게시중", pending: "승인 대기", rejected: "거절됨" };
+  var catLabel = { rival: "라이벌", mate: "동료" };
+
+  function renderMembers() {
+    var users = loadUsers();
+    var emails = Object.keys(users).sort(function (a, b) {
+      return (users[a].createdAt || 0) - (users[b].createdAt || 0);
+    });
+
+    memberList.innerHTML = "";
+    emails.forEach(function (email) {
+      var li = document.createElement("li");
+      li.className = "member";
+      if (users[email].disabled) li.classList.add("is-disabled");
+
+      var head = document.createElement("div");
+      head.className = "member-head";
+
+      head.appendChild(avatarEl(email, 28));
+
+      var emailEl = document.createElement("span");
+      emailEl.className = "email";
+      emailEl.textContent = users[email].nickname || email;
+      head.appendChild(emailEl);
+
+      if (email === ADMIN_EMAIL) {
+        var adminBadge = document.createElement("span");
+        adminBadge.className = "badge";
+        adminBadge.textContent = "최고 관리자";
+        head.appendChild(adminBadge);
+      } else if (users[email].admin) {
+        var grantedBadge = document.createElement("span");
+        grantedBadge.className = "badge";
+        grantedBadge.textContent = "관리자";
+        head.appendChild(grantedBadge);
+      }
+
+      if (users[email].disabled) {
+        var offBadge = document.createElement("span");
+        offBadge.className = "badge badge-off";
+        offBadge.textContent = "비활성";
+        head.appendChild(offBadge);
+      }
+
+      var chip = document.createElement("span");
+      chip.className = "score-chip";
+      chip.textContent = getScore(email) + "점";
+      head.appendChild(chip);
+
+      var tempChip = document.createElement("span");
+      tempChip.className = "score-chip";
+      tempChip.textContent = "🌡 " + tempOf(email);
+      tempChip.style.color = tempColor(tempRawOf(email));
+      tempChip.style.borderColor = tempColor(tempRawOf(email));
+      head.appendChild(tempChip);
+
+      var meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = "이메일 " + email + " · 가입일 " + formatDate(users[email].createdAt || 0);
+
+      li.appendChild(head);
+      li.appendChild(meta);
+
+      // 작성한 공고 기록
+      var authored = posts.filter(function (p) { return p.authorId === email; });
+      var authoredGroup = document.createElement("div");
+      authoredGroup.className = "record-group";
+      var authoredTitle = document.createElement("h3");
+      authoredTitle.textContent = "작성한 공고 " + authored.length + "건";
+      authoredGroup.appendChild(authoredTitle);
+      if (authored.length === 0) {
+        var noneA = document.createElement("p");
+        noneA.className = "record";
+        noneA.innerHTML = '<span class="none">없음</span>';
+        authoredGroup.appendChild(noneA);
+      }
+      authored.forEach(function (p) {
+        var row = document.createElement("div");
+        row.className = "record";
+        var name = document.createElement("span");
+        name.textContent = p.title + " (" + catLabel[p.category] + " · " + statusLabel[p.status] + " · 신청 " + p.applicants.length + "/" + p.capacity + ")";
+        row.appendChild(name);
+        authoredGroup.appendChild(row);
+      });
+      li.appendChild(authoredGroup);
+
+      // 참가 신청 기록 (관리자는 신청 불가이므로 생략)
+      if (email !== ADMIN_EMAIL) {
+        var applied = posts.filter(function (p) { return p.applicants.indexOf(email) !== -1; });
+        var appliedGroup = document.createElement("div");
+        appliedGroup.className = "record-group";
+        var appliedTitle = document.createElement("h3");
+        appliedTitle.textContent = "참가 신청 " + applied.length + "건";
+        appliedGroup.appendChild(appliedTitle);
+        if (applied.length === 0) {
+          var noneB = document.createElement("p");
+          noneB.className = "record";
+          noneB.innerHTML = '<span class="none">없음</span>';
+          appliedGroup.appendChild(noneB);
+        }
+        applied.forEach(function (p) {
+          var row = document.createElement("div");
+          row.className = "record";
+          var name = document.createElement("span");
+          name.textContent = p.title + " (" + catLabel[p.category] + " · +" + (p.applicantPts[email] || p.score) + "점)";
+          var cancelBtn = document.createElement("button");
+          cancelBtn.type = "button";
+          cancelBtn.className = "kick-btn";
+          cancelBtn.textContent = "신청 취소";
+          cancelBtn.setAttribute("aria-label", nickOf(email) + "의 \"" + p.title + "\" 신청 취소");
+          cancelBtn.addEventListener("click", function () {
+            if (!confirm(nickOf(email) + " 님의 \"" + p.title + "\" 신청을 취소시킬까요? (지급된 점수도 회수됩니다)")) return;
+            syncAction("kickApplicant", { postId: p.id, email: email });
+          });
+          row.appendChild(name);
+          row.appendChild(cancelBtn);
+          appliedGroup.appendChild(row);
+        });
+        li.appendChild(appliedGroup);
+      }
+
+      // 점수 지급/차감
+      var adjust = document.createElement("div");
+      adjust.className = "score-adjust";
+      var adjustLabel = document.createElement("label");
+      adjustLabel.textContent = "점수 조정";
+      adjustLabel.htmlFor = "adjust-" + email;
+      var input = document.createElement("input");
+      input.type = "number";
+      input.id = "adjust-" + email;
+      input.min = "1";
+      input.max = "9999";
+      input.placeholder = "점수";
+
+      function applyAdjust(sign) {
+        var n = parseInt(input.value, 10);
+        if (!(n >= 1)) {
+          alert("1 이상의 점수를 입력해주세요.");
+          return;
+        }
+        syncAction("adjustScore", { email: email, delta: sign * n });
+      }
+
+      var giveBtn = document.createElement("button");
+      giveBtn.type = "button";
+      giveBtn.className = "btn btn-approve";
+      giveBtn.textContent = "지급";
+      giveBtn.addEventListener("click", function () { applyAdjust(1); });
+
+      var takeBtn = document.createElement("button");
+      takeBtn.type = "button";
+      takeBtn.className = "btn btn-reject";
+      takeBtn.textContent = "차감";
+      takeBtn.addEventListener("click", function () { applyAdjust(-1); });
+
+      adjust.appendChild(adjustLabel);
+      adjust.appendChild(input);
+      adjust.appendChild(giveBtn);
+      adjust.appendChild(takeBtn);
+
+      // 관리자 권한 부여/회수 — 최고 관리자에게만 노출, 소유자 계정 제외
+      if (isOwner() && email !== ADMIN_EMAIL) {
+        var isUserAdmin = !!users[email].admin;
+        var adminBtn = document.createElement("button");
+        adminBtn.type = "button";
+        adminBtn.className = isUserAdmin ? "btn btn-reject" : "btn btn-approve";
+        adminBtn.style.marginLeft = "auto";
+        adminBtn.textContent = isUserAdmin ? "관리자 회수" : "관리자 지정";
+        adminBtn.addEventListener("click", function () {
+          var msg = isUserAdmin
+            ? nickOf(email) + " (" + email + ") 님의 관리자 권한을 회수할까요?"
+            : nickOf(email) + " (" + email + ") 님에게 관리자 권한을 부여할까요?\n승인·신고·점수·상점·계정 관리 권한을 갖게 됩니다. (권한 부여/회수는 제외)";
+          if (!confirm(msg)) return;
+          syncAction("setAdmin", { email: email, admin: !isUserAdmin });
+        });
+        adjust.appendChild(adminBtn);
+      }
+
+      // 비활성화·삭제: 소유자 계정 제외, 다른 관리자는 최고 관리자만 대상 지정 가능
+      if (email !== ADMIN_EMAIL && (isOwner() || !users[email].admin)) {
+        var isDisabled = !!users[email].disabled;
+        var disableBtn = document.createElement("button");
+        disableBtn.type = "button";
+        disableBtn.className = isDisabled ? "btn btn-approve" : "btn btn-reject";
+        if (!isOwner()) disableBtn.style.marginLeft = "auto";
+        disableBtn.textContent = isDisabled ? "활성화" : "비활성화";
+        disableBtn.addEventListener("click", function () {
+          var msg = isDisabled
+            ? nickOf(email) + " (" + email + ") 계정을 다시 활성화할까요?"
+            : nickOf(email) + " (" + email + ") 계정을 비활성화할까요? 로그인이 차단되고 접속 중인 세션도 종료됩니다. (데이터는 유지)";
+          if (!confirm(msg)) return;
+          syncAction("setDisabled", { email: email, disabled: !isDisabled });
+        });
+        adjust.appendChild(disableBtn);
+
+        var deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-reject";
+        deleteBtn.textContent = "계정 삭제";
+        deleteBtn.addEventListener("click", function () {
+          if (!confirm(nickOf(email) + " (" + email + ") 계정을 삭제할까요? 작성한 공고, 신청 기록, 점수가 모두 삭제됩니다.")) return;
+          syncAction("deleteAccount", { email: email });
+        });
+        adjust.appendChild(deleteBtn);
+      }
+
+      li.appendChild(adjust);
+
+      // 매너온도 조정 (관리자 계정 제외)
+      if (email !== ADMIN_EMAIL) {
+        var tAdjust = document.createElement("div");
+        tAdjust.className = "score-adjust";
+        var tLabel = document.createElement("label");
+        tLabel.textContent = "온도 조정";
+        tLabel.htmlFor = "temp-" + email;
+        var tInput = document.createElement("input");
+        tInput.type = "number";
+        tInput.id = "temp-" + email;
+        tInput.min = "0.1";
+        tInput.max = "20";
+        tInput.step = "0.1";
+        tInput.placeholder = "°C";
+
+        function applyTempAdjust(sign) {
+          var n = parseFloat(tInput.value);
+          if (!(n >= 0.1)) {
+            alert("0.1 이상의 온도를 입력해주세요.");
+            return;
+          }
+          syncAction("adjustTemp", { email: email, delta: sign * n });
+        }
+
+        var upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "btn btn-approve";
+        upBtn.textContent = "올리기";
+        upBtn.addEventListener("click", function () { applyTempAdjust(1); });
+
+        var downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "btn btn-reject";
+        downBtn.textContent = "내리기";
+        downBtn.addEventListener("click", function () { applyTempAdjust(-1); });
+
+        tAdjust.appendChild(tLabel);
+        tAdjust.appendChild(tInput);
+        tAdjust.appendChild(upBtn);
+        tAdjust.appendChild(downBtn);
+        li.appendChild(tAdjust);
+      }
+
+      memberList.appendChild(li);
+    });
+
+    emptyMembers.hidden = emails.length > 0;
+    document.getElementById("count-members").textContent = emails.length > 0 ? " " + emails.length : "";
+  }
+
+  /* ── 불참 신고 처리 ───────────── */
+  var reportList = document.getElementById("report-list");
+  var emptyReports = document.getElementById("empty-reports");
+
+  function renderReports() {
+    var pending = reports.filter(function (r) { return r.status === "pending"; });
+    reportList.innerHTML = "";
+
+    pending.forEach(function (r) {
+      var li = document.createElement("li");
+      li.className = "post";
+
+      var head = document.createElement("div");
+      head.className = "post-head";
+      var h2 = document.createElement("h2");
+      h2.textContent = nickOf(r.reported) + (r.type === "fraud" ? " 부정행위 신고" : " 불참 신고");
+      var chip = document.createElement("span");
+      chip.className = "cat-chip";
+      chip.textContent = "🌡 현재 " + tempOf(r.reported);
+      chip.style.color = tempColor(tempRawOf(r.reported));
+      chip.style.borderColor = tempColor(tempRawOf(r.reported));
+      head.appendChild(h2);
+      head.appendChild(chip);
+
+      var detail = document.createElement("p");
+      detail.className = "detail";
+      detail.textContent = r.reason ? "사유: " + r.reason : "사유 없음";
+
+      var meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = (r.postTitle ? "공고 \"" + r.postTitle + "\" · " : "") +
+        "신고자 " + nickOf(r.reporter) +
+        " · 대상 " + nickOf(r.reported) + " (" + r.reported + ") · " + formatDate(r.createdAt);
+
+      var row = document.createElement("div");
+      row.className = "approve-row";
+
+      var penaltyInput = document.createElement("input");
+      penaltyInput.type = "number";
+      penaltyInput.min = "0.1";
+      penaltyInput.max = "10";
+      penaltyInput.step = "0.1";
+      penaltyInput.value = "1";
+      penaltyInput.style.width = "80px";
+      penaltyInput.style.font = "inherit";
+      penaltyInput.style.padding = "4px 8px";
+      penaltyInput.style.border = "1px solid var(--line)";
+      penaltyInput.style.borderRadius = "8px";
+      penaltyInput.setAttribute("aria-label", "차감할 온도");
+      penaltyInput.title = "차감할 온도 (°C)";
+
+      var scorePenaltyInput = document.createElement("input");
+      scorePenaltyInput.type = "number";
+      scorePenaltyInput.min = "0";
+      scorePenaltyInput.max = "9999";
+      scorePenaltyInput.step = "1";
+      scorePenaltyInput.value = "0";
+      scorePenaltyInput.style.width = "80px";
+      scorePenaltyInput.style.font = "inherit";
+      scorePenaltyInput.style.padding = "4px 8px";
+      scorePenaltyInput.style.border = "1px solid var(--line)";
+      scorePenaltyInput.style.borderRadius = "8px";
+      scorePenaltyInput.setAttribute("aria-label", "차감할 점수");
+      scorePenaltyInput.title = "차감할 점수 (0이면 온도만 차감)";
+
+      var dismissBtn = document.createElement("button");
+      dismissBtn.type = "button";
+      dismissBtn.className = "btn btn-reject";
+      dismissBtn.textContent = "기각";
+      dismissBtn.addEventListener("click", function () {
+        if (!confirm("이 신고를 기각할까요? (온도 변화 없음)")) return;
+        syncAction("dismissReport", { id: r.id });
+      });
+
+      var acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "btn btn-approve";
+      acceptBtn.textContent = "제재 적용";
+      acceptBtn.addEventListener("click", function () {
+        var n = parseFloat(penaltyInput.value);
+        if (!(n >= 0.1 && n <= 10)) {
+          alert("차감 온도는 0.1~10 사이로 입력해주세요.");
+          return;
+        }
+        var sp = parseInt(scorePenaltyInput.value, 10) || 0;
+        if (sp < 0 || sp > 9999) {
+          alert("차감 점수는 0~9999 사이로 입력해주세요.");
+          return;
+        }
+        var msg = nickOf(r.reported) + " 님의 매너온도를 " + n + "°C 내릴까요?";
+        if (sp > 0) msg = nickOf(r.reported) + " 님에게 온도 -" + n + "°C, 점수 -" + sp + "점 제재를 적용할까요?";
+        if (!confirm(msg)) return;
+        syncAction("resolveReport", { id: r.id, penalty: n, scorePenalty: sp });
+      });
+
+      var tempLabel = document.createElement("span");
+      tempLabel.textContent = "온도(°C)";
+      tempLabel.style.cssText = "font-size:13px;color:var(--fg-soft);align-self:center;";
+      var scoreLabel = document.createElement("span");
+      scoreLabel.textContent = "점수";
+      scoreLabel.style.cssText = "font-size:13px;color:var(--fg-soft);align-self:center;";
+
+      row.appendChild(tempLabel);
+      row.appendChild(penaltyInput);
+      row.appendChild(scoreLabel);
+      row.appendChild(scorePenaltyInput);
+      row.appendChild(dismissBtn);
+      row.appendChild(acceptBtn);
+
+      li.appendChild(head);
+      li.appendChild(detail);
+      li.appendChild(meta);
+      li.appendChild(row);
+      reportList.appendChild(li);
+    });
+
+    emptyReports.hidden = pending.length > 0;
+    document.getElementById("count-reports").textContent = pending.length > 0 ? " " + pending.length : "";
+  }
+
+  /* ── 상점 관리 ───────────────── */
+  var SHOP_KEY = "recruit-shop";
+  var shopTypeLabel = { banner: "개인 페이지 배너", postbg: "개인 공고 배경", sitebg: "사이트 배경" };
+  var shopPreview = document.getElementById("shop-preview");
+  var shopValueInput = document.getElementById("shop-value");
+  var shopImageInput = document.getElementById("shop-image-input");
+  var shopImageInfo = document.getElementById("shop-image-info");
+  var shopImageClear = document.getElementById("shop-image-clear");
+  var MAX_IMAGE_BYTES = 25 * 1024 * 1024; // 업로드 이미지 최대 크기
+
+  function updateShopPreview() {
+    shopPreview.style.background = shopValueInput.value || "";
+    shopPreview.style.backgroundSize = "cover";
+    shopPreview.style.backgroundPosition = "center";
+  }
+  // 직접 입력하면 업로드 상태 표시는 지움
+  shopValueInput.addEventListener("input", function () {
+    updateShopPreview();
+    if (shopValueInput.value.indexOf('url("data:') === -1) {
+      shopImageInfo.textContent = "";
+      shopImageClear.hidden = true;
+    }
+  });
+
+  document.getElementById("shop-image-btn").addEventListener("click", function () {
+    shopImageInput.click();
+  });
+  shopImageClear.addEventListener("click", function () {
+    shopValueInput.value = "";
+    shopImageInput.value = "";
+    shopImageInfo.textContent = "";
+    shopImageClear.hidden = true;
+    updateShopPreview();
+  });
+  shopImageInput.addEventListener("change", function () {
+    var file = shopImageInput.files && shopImageInput.files[0];
+    if (!file) return;
+    var okTypes = ["image/png", "image/jpeg", "image/gif"];
+    if (okTypes.indexOf(file.type) === -1) {
+      alert("PNG, JPG, GIF 이미지만 올릴 수 있습니다.");
+      shopImageInput.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      alert("이미지가 너무 큽니다 (" + Math.round(file.size / 1024) + "KB). 25MB 이하로 올려주세요.");
+      shopImageInput.value = "";
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      // 데이터 URL을 CSS 배경값으로 감싼다 (GIF 애니메이션 유지 — 재인코딩 안 함)
+      shopValueInput.value = 'url("' + reader.result + '")';
+      updateShopPreview();
+      shopImageInfo.textContent = "업로드됨: " + file.name + " (" + Math.round(file.size / 1024) + "KB)";
+      shopImageClear.hidden = false;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("shop-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var type = document.getElementById("shop-type").value;
+    var name = document.getElementById("shop-name").value.trim();
+    var price = parseInt(document.getElementById("shop-price").value, 10);
+    var value = shopValueInput.value.trim();
+    if (!name) { alert("상품 이름을 입력해주세요."); return; }
+    if (!(price >= 0)) { alert("가격을 0 이상으로 입력해주세요."); return; }
+    if (!value) { alert("배경 값을 입력해주세요."); return; }
+    syncAction("addShopItem", { type: type, name: name, price: price, value: value }).then(function () {
+      document.getElementById("shop-name").value = "";
+      shopValueInput.value = "";
+      shopImageInput.value = "";
+      shopImageInfo.textContent = "";
+      shopImageClear.hidden = true;
+      updateShopPreview();
+    });
+  });
+
+  function loadShop() {
+    // 상점은 이미지가 커서 localStorage에 저장하지 않고 메모리에 보관 (store.js)
+    return (window.Api && window.Api.getShop) ? window.Api.getShop() : [];
+  }
+
+  function renderShop() {
+    var shop = loadShop();
+    var list = document.getElementById("shop-list");
+    list.innerHTML = "";
+    shop.forEach(function (it) {
+      var li = document.createElement("li");
+      li.className = "member";
+
+      var head = document.createElement("div");
+      head.className = "member-head";
+
+      var sw = document.createElement("span");
+      sw.className = "shop-swatch";
+      sw.style.background = it.value;
+      sw.style.backgroundSize = "cover";
+      sw.style.backgroundPosition = "center";
+      head.appendChild(sw);
+
+      var nameEl = document.createElement("span");
+      nameEl.className = "email";
+      nameEl.textContent = it.name;
+      head.appendChild(nameEl);
+
+      var typeChip = document.createElement("span");
+      typeChip.className = "badge";
+      typeChip.textContent = shopTypeLabel[it.type] || it.type;
+      head.appendChild(typeChip);
+
+      var priceChip = document.createElement("span");
+      priceChip.className = "score-chip";
+      priceChip.textContent = it.price === 0 ? "무료" : (it.price + "점");
+      head.appendChild(priceChip);
+
+      li.appendChild(head);
+
+      var meta = document.createElement("p");
+      meta.className = "meta";
+      // 업로드 이미지는 데이터 URL이 매우 길어 요약 표시
+      meta.textContent = "배경 값: " + (it.value.indexOf('url("data:') === 0 ? "업로드 이미지" : it.value);
+      li.appendChild(meta);
+
+      var actions = document.createElement("div");
+      actions.className = "score-adjust";
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn btn-reject";
+      delBtn.style.marginLeft = "auto";
+      delBtn.textContent = "상품 삭제";
+      delBtn.addEventListener("click", function () {
+        if (!confirm('"' + it.name + '" 상품을 삭제할까요? 이미 구매한 회원의 장착도 해제됩니다. (환불 없음)')) return;
+        syncAction("deleteShopItem", { id: it.id });
+      });
+      actions.appendChild(delBtn);
+      li.appendChild(actions);
+
+      list.appendChild(li);
+    });
+    document.getElementById("empty-shop").hidden = shop.length > 0;
+    document.getElementById("count-shop").textContent = shop.length > 0 ? " " + shop.length : "";
+  }
+
+  function renderAll() {
+    render();
+    renderMembers();
+    renderReports();
+    renderShop();
+  }
+
+  /* ── 탭 전환 ─────────────────── */
+  var TAB_NAMES = ["pending", "members", "reports", "shop"];
+  var adminTabs = {
+    pending: document.getElementById("tab-pending"),
+    members: document.getElementById("tab-members"),
+    reports: document.getElementById("tab-reports"),
+    shop: document.getElementById("tab-shop")
+  };
+  var adminPanels = {
+    pending: document.getElementById("panel-pending"),
+    members: document.getElementById("panel-members"),
+    reports: document.getElementById("panel-reports"),
+    shop: document.getElementById("panel-shop")
+  };
+  function switchAdminTab(name) {
+    TAB_NAMES.forEach(function (n) {
+      adminTabs[n].setAttribute("aria-selected", n === name ? "true" : "false");
+      adminPanels[n].hidden = n !== name;
+    });
+  }
+  adminTabs.pending.addEventListener("click", function () { switchAdminTab("pending"); });
+  adminTabs.members.addEventListener("click", function () { switchAdminTab("members"); });
+  adminTabs.reports.addEventListener("click", function () { switchAdminTab("reports"); });
+  adminTabs.shop.addEventListener("click", function () { switchAdminTab("shop"); });
+
+  document.getElementById("logout-btn").addEventListener("click", function () {
+    window.Api.call("logout", {}).catch(function () {});
+    window.Api.clearAuth();
+    location.replace("login.html");
+  });
+
+  renderAll();
+});
+</script>
+
+</body>
+</html>

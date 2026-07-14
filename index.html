@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>모집 게시판 — 라이벌 &amp; 동료</title>
+<script>
+  // 로그인하지 않았으면 로그인 페이지로
+  if (!localStorage.getItem("recruit-session") && !sessionStorage.getItem("recruit-session")) {
+    location.replace("login.html");
+  }
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --accent-strong: hsl(217, 85%, 38%);
+    --accent-soft: hsl(217, 80%, 96%);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --radius: 8px;
+    --shadow: 0 4px 24px hsla(0, 0%, 0%, 0.12);
+    --text-sm: 0.8125rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5625rem;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
+  }
+
+  /* ── 헤더 ───────────────────── */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    color: var(--fg-soft);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+  }
+  .user-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--fg);
+    font-weight: 700;
+    overflow: hidden;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  .user-link {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 150ms ease-out;
+  }
+  .user-link:hover { border-bottom-color: var(--accent); }
+  .user-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .logout-btn {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-3);
+    cursor: pointer;
+    transition: border-color 150ms ease-out;
+  }
+  .logout-btn:hover { border-color: var(--fg); }
+  .logout-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  /* ── 탭 ─────────────────────── */
+  .tabs {
+    display: flex;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--fg-soft);
+    padding: var(--space-3) var(--space-1);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab .count {
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    font-weight: 500;
+    margin-left: var(--space-1);
+  }
+
+  /* ── 공고 리스트 ─────────────── */
+  .post-list {
+    list-style: none;
+    margin-top: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .post {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-6);
+    transition: border-color 150ms ease-out;
+  }
+  .post:hover { border-color: var(--fg); }
+  .post-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .post h2 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .badge {
+    flex-shrink: 0;
+    display: inline-block;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--space-1);
+    margin-top: var(--space-1);
+  }
+  .post-author {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .post-author .author-name { font-weight: 600; }
+  .post-author .author-temp { color: var(--fg-soft); }
+  .report-card {
+    margin-top: var(--space-6);
+  }
+  .report-card h2 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+  }
+  .report-select {
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    transition: border-color 150ms ease-out;
+  }
+  .report-select:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+  .winner-row {
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .win-select {
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+  .win-select:hover { border-color: var(--fg); }
+  .win-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .post-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+  }
+  .post-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .apply-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    transition: background 150ms ease-out, border-color 150ms ease-out;
+  }
+  .apply-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .apply-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .apply-btn.applied {
+    background: var(--bg);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .apply-btn.applied:hover { background: var(--accent-soft); }
+  .apply-btn:disabled {
+    background: var(--surface);
+    color: var(--fg-soft);
+    border-color: var(--line);
+    cursor: not-allowed;
+    opacity: 1;
+  }
+  .applicant-list {
+    list-style: none;
+    margin-top: var(--space-3);
+    border-top: 1px dashed var(--line);
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .applicant-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+  .kick-btn {
+    background: var(--bg);
+    color: var(--fg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+  }
+  .kick-btn:hover { color: var(--fg); border-color: var(--fg); }
+  .kick-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .badge-outline {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--fg);
+  }
+  .score-chip {
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    white-space: nowrap;
+  }
+  .admin-link {
+    text-decoration: none;
+    display: inline-block;
+  }
+  .hint {
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    margin-top: var(--space-1);
+  }
+
+  /* ── 정렬 도구 ───────────────── */
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .toolbar label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+  }
+  .toolbar select {
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    transition: border-color 150ms ease-out;
+  }
+  .toolbar select:hover { border-color: var(--fg); }
+  .toolbar select:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  /* ── 댓글 ────────────────────── */
+  .comments {
+    margin-top: var(--space-3);
+    border-top: 1px dashed var(--line);
+    padding-top: var(--space-3);
+  }
+  .comment {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    padding: var(--space-1) 0;
+  }
+  .comment .author {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .comment .text {
+    flex: 1;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .comment .when {
+    color: var(--fg-soft);
+    white-space: nowrap;
+  }
+  .comment-del {
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .comment-del:hover { color: var(--fg); }
+  .comment-del:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .comment-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .comment-form input {
+    flex: 1;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    transition: border-color 150ms ease-out;
+  }
+  .comment-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+  .comment-form button {
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    transition: opacity 150ms ease-out;
+  }
+  .comment-form button:hover { opacity: 0.85; }
+  .comment-form button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .comment-more {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    padding: var(--space-2);
+    cursor: pointer;
+    text-align: center;
+    transition: color 150ms ease-out, background 150ms ease-out;
+  }
+  .comment-more:hover { color: var(--fg); background: var(--surface); }
+  .comment-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── 참여자 채팅 ─────────────── */
+  .chat-btn {
+    background: var(--bg);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    transition: background 150ms ease-out, color 150ms ease-out;
+  }
+  .chat-btn:hover { background: var(--accent); color: var(--bg); }
+  .chat-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 320px;
+    overflow-y: auto;
+    margin: var(--space-4) 0;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .chat-msg {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 85%;
+  }
+  .chat-msg.mine {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+  .chat-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+    margin-bottom: 2px;
+  }
+  .chat-bubble {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .chat-msg.mine .chat-bubble {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .chat-empty {
+    text-align: center;
+    color: var(--fg-soft);
+    font-size: var(--text-sm);
+    padding: var(--space-6) 0;
+  }
+  .delete-btn, .edit-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+  }
+  .delete-btn:hover, .edit-btn:hover { color: var(--fg); border-color: var(--line); }
+  .delete-btn:focus-visible, .edit-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .post .detail {
+    margin-top: var(--space-2);
+    font-size: var(--text-base);
+    color: var(--fg);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .post .meta {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--fg-soft);
+  }
+
+  .empty {
+    margin-top: var(--space-12);
+    text-align: center;
+    color: var(--fg-soft);
+    font-size: var(--text-base);
+  }
+
+  /* ── 작성 버튼 (오른쪽 하단 고정) ── */
+  .fab {
+    position: fixed;
+    right: var(--space-8);
+    bottom: var(--space-8);
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 700;
+    padding: var(--space-4) var(--space-6);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 150ms ease-out, opacity 150ms ease-out;
+  }
+  .fab:hover { transform: translateY(-2px); }
+  .fab:active { transform: translateY(0); opacity: 0.85; }
+  .fab:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+
+  /* ── 모달 ────────────────────── */
+  dialog {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0;
+    width: min(480px, calc(100vw - var(--space-8)));
+    box-shadow: var(--shadow);
+  }
+  dialog::backdrop { background: hsla(0, 0%, 0%, 0.45); }
+
+  .modal-body { padding: var(--space-8); }
+  .modal-body h2 {
+    font-size: var(--text-lg);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-6);
+  }
+
+  .field { margin-bottom: var(--space-6); }
+  .field > label, .field > .label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-soft);
+    margin-bottom: var(--space-2);
+  }
+
+  /* 탭 선택 세그먼트 */
+  .segment {
+    display: flex;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .segment label {
+    flex: 1;
+    text-align: center;
+    padding: var(--space-3);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--fg);
+    transition: background 150ms ease-out, color 150ms ease-out;
+  }
+  .segment label:first-of-type { border-right: 1px solid var(--accent); }
+  .segment input { position: absolute; opacity: 0; pointer-events: none; }
+  .segment input:checked + label { background: var(--accent); color: var(--bg); }
+  .segment input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -4px; }
+
+  input[type="text"], input[type="number"], input[type="datetime-local"],
+  input[type="date"], input[type="time"], textarea {
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    transition: border-color 150ms ease-out;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, input[type="datetime-local"]:focus,
+  input[type="date"]:focus, input[type="time"]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+  textarea { resize: vertical; min-height: 120px; }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-8);
+  }
+  .btn {
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-6);
+    cursor: pointer;
+    transition: opacity 150ms ease-out;
+  }
+  .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .btn-ghost {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { border-color: var(--fg); }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+  }
+  .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+
+  @media (max-width: 480px) {
+    /* FAB가 마지막 카드를 가리지 않도록 하단 여백 확보 */
+    .container { padding: var(--space-6) var(--space-4) 96px; }
+
+    /* 헤더: 제목과 사용자 영역을 세로로 쌓아 버튼 찌그러짐 방지 */
+    header { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+    header h1 { font-size: var(--text-lg); }
+    .user-box { width: 100%; flex-wrap: wrap; gap: var(--space-2); }
+    .user-link { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logout-btn { padding: var(--space-2) var(--space-3); min-height: 40px; }
+
+    /* 탭: 간격을 줄이고 터치 영역 확대 */
+    .tabs { gap: var(--space-4); margin-top: var(--space-6); }
+    .tab { font-size: var(--text-sm); padding: var(--space-3) 0; flex: 1; text-align: center; }
+
+    /* 정렬 도구: 전체 너비로 펼쳐 누르기 쉽게 */
+    .toolbar select { flex: 1; padding: var(--space-2) var(--space-3); font-size: var(--text-base); min-height: 40px; }
+
+    /* 카드: 여백 최적화 */
+    .post { padding: var(--space-4); }
+    .post h2 { font-size: var(--text-base); }
+
+    /* 카드 하단: 메타와 액션을 세로로 분리해 버튼을 크게 */
+    .post-foot { flex-direction: column; align-items: stretch; }
+    .post-actions { width: 100%; flex-wrap: wrap; }
+    .apply-btn, .chat-btn { flex: 1; min-height: 44px; padding: var(--space-3) var(--space-4); text-align: center; }
+    .win-select { flex: 1; min-height: 44px; font-size: var(--text-base); }
+
+    /* 신청자 관리 버튼도 손가락에 맞게 */
+    .kick-btn { min-height: 36px; padding: var(--space-2) var(--space-3); }
+
+    /* FAB: 위치 조정 + 터치 크기 */
+    .fab { right: var(--space-4); bottom: var(--space-4); padding: var(--space-4) var(--space-6); }
+
+    /* 모달: 화면을 꽉 채우고 여백을 줄여 스크롤 편하게 */
+    dialog { width: calc(100vw - var(--space-4)); max-height: calc(100vh - var(--space-6)); }
+    .modal-body { padding: var(--space-6); }
+    .modal-actions .btn { flex: 1; min-height: 48px; }
+
+    /* iOS Safari 자동 확대 방지: 입력 폰트 16px 이상 유지 */
+    .toolbar select, .win-select, .report-select { font-size: var(--text-base); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>모집 게시판</h1>
+      <p>함께 겨룰 라이벌, 함께 갈 동료를 찾아보세요.</p>
+    </div>
+    <div class="user-box">
+      <span class="score-chip" id="user-score"></span>
+      <a id="user-email" class="user-link" href="profile.html" title="내 정보"></a>
+      <a class="logout-btn" href="shop.html">상점</a>
+      <a class="logout-btn admin-link" href="ranking.html">랭킹</a>
+      <button type="button" class="logout-btn" id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="모집 분류">
+    <button class="tab" id="tab-rival" role="tab" aria-selected="true" aria-controls="panel-rival">
+      라이벌 모집<span class="count" id="count-rival"></span>
+    </button>
+    <button class="tab" id="tab-mate" role="tab" aria-selected="false" aria-controls="panel-mate">
+      동료 모집<span class="count" id="count-mate"></span>
+    </button>
+    <button class="tab" id="tab-report" role="tab" aria-selected="false" aria-controls="panel-report">
+      신고<span class="count" id="count-report"></span>
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <label for="sort-select">정렬</label>
+    <select id="sort-select">
+      <option value="timeAsc" selected>게시 시간 오름차순</option>
+      <option value="timeDesc">게시 시간 내림차순</option>
+      <option value="scoreAsc">점수 오름차순</option>
+      <option value="scoreDesc">점수 내림차순</option>
+      <option value="nameAsc">이름 가나다순</option>
+    </select>
+  </div>
+
+  <div id="panel-rival" role="tabpanel" aria-labelledby="tab-rival">
+    <ul class="post-list" id="list-rival"></ul>
+    <p class="empty" id="empty-rival">아직 올라온 라이벌 모집 공고가 없습니다.</p>
+  </div>
+
+  <div id="panel-mate" role="tabpanel" aria-labelledby="tab-mate" hidden>
+    <ul class="post-list" id="list-mate"></ul>
+    <p class="empty" id="empty-mate">아직 올라온 동료 모집 공고가 없습니다.</p>
+  </div>
+
+  <div id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden>
+    <div class="post report-card">
+      <h2>부정행위 신고</h2>
+      <p class="hint" style="margin-bottom: var(--space-4);">
+        부정한 방법으로 점수를 얻은 회원을 신고해주세요.
+        신고 내역은 본인과 관리자만 볼 수 있으며, 관리자 확인 후 대상의 매너온도가 조정될 수 있습니다.
+      </p>
+      <form id="report-form">
+        <div class="field">
+          <label for="report-target">신고 대상</label>
+          <select id="report-target" class="report-select"></select>
+        </div>
+        <div class="field">
+          <label for="report-reason">신고 사유</label>
+          <textarea id="report-reason" maxlength="200" required
+                    placeholder="부정한 방법으로 점수를 얻은 정황을 구체적으로 적어주세요."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">신고 접수</button>
+      </form>
+    </div>
+    <ul class="post-list" id="my-report-list"></ul>
+    <p class="empty" id="empty-report" hidden>접수한 신고가 없습니다.</p>
+  </div>
+</div>
+
+<button class="fab" id="open-modal">+ 공고 작성</button>
+
+<dialog id="post-modal">
+  <form class="modal-body" id="post-form" method="dialog">
+    <h2 id="modal-title">모집 공고 작성</h2>
+
+    <div class="field">
+      <span class="label">올릴 탭</span>
+      <div class="segment">
+        <input type="radio" name="category" id="cat-rival" value="rival" checked />
+        <label for="cat-rival">라이벌 모집</label>
+        <input type="radio" name="category" id="cat-mate" value="mate" />
+        <label for="cat-mate">동료 모집</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="post-title">공고 이름</label>
+      <input type="text" id="post-title" name="title" required maxlength="80"
+             placeholder="예: 매주 알고리즘 대결할 라이벌 구합니다" />
+    </div>
+
+    <div class="field">
+      <label for="post-capacity">모집 인원</label>
+      <input type="number" id="post-capacity" name="capacity" required min="1" max="99" value="1" />
+      <p class="hint">3명까지는 자유롭게 모집할 수 있습니다. 4명 이상은 관리자 승인 후에 게시됩니다.</p>
+    </div>
+
+    <div class="field">
+      <label for="post-deadline">모집 기한</label>
+      <input type="datetime-local" id="post-deadline" name="deadline" required />
+      <p class="hint">기한이 지나면 모집이 마감되어 참여 신청·신청 취소가 불가합니다.</p>
+    </div>
+
+    <div class="field">
+      <label for="post-score">참여 점수</label>
+      <input type="number" id="post-score" name="score" required min="1" max="999" value="5" />
+      <p class="hint">기본 5점. 다른 점수로 설정하면 관리자 승인 후에 게시됩니다.<br />실제 지급 점수는 받는 사람의 매너온도에 비례합니다 (36.5°C = 100%).<br />공고가 게시되면 참여 점수 5점당 1점이 작성 비용으로 소모됩니다 (5점 공고 = 1점).</p>
+    </div>
+
+    <div class="field" id="win-score-field">
+      <label for="post-winscore">승리 점수 (라이벌 전용)</label>
+      <input type="number" id="post-winscore" name="winScore" min="1" max="999" value="10" />
+      <p class="hint">대결이 끝나면 작성자가 승자를 확정하고, 승자가 이 점수를 받습니다.<br />기본 10점. 다른 점수로 설정하면 관리자 승인 후에 게시됩니다.</p>
+    </div>
+
+    <div class="field">
+      <label for="post-detail">세부 내용</label>
+      <textarea id="post-detail" name="detail" required
+                placeholder="모집 대상, 활동 방식, 연락 방법 등을 자유롭게 적어주세요."></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancel-modal">취소</button>
+      <button type="submit" class="btn btn-primary" id="submit-btn">올리기</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="chat-modal">
+  <div class="modal-body">
+    <h2 id="chat-title"></h2>
+    <p class="hint">이 공고의 작성자와 참여 신청자만 볼 수 있는 대화방입니다.</p>
+    <div id="chat-messages" aria-live="polite"></div>
+    <form class="comment-form" id="chat-form">
+      <input type="text" id="chat-input" maxlength="500" placeholder="메시지를 입력하세요" autocomplete="off" />
+      <button type="submit">전송</button>
+    </form>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="chat-close">닫기</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+window.__storeReady.then(function () {
+  var STORAGE_KEY = "recruit-posts";
+  var SESSION_KEY = "recruit-session";
+  var SCORES_KEY = "recruit-scores";
+  var USERS_KEY = "recruit-users";
+
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function loadScores() {
+    try {
+      return JSON.parse(localStorage.getItem(SCORES_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function addScore(email, delta) {
+    var s = loadScores();
+    s[email] = (s[email] || 0) + delta;
+    if (s[email] < 0) s[email] = 0;
+    localStorage.setItem(SCORES_KEY, JSON.stringify(s));
+  }
+  function getScore(email) {
+    return loadScores()[email] || 0;
+  }
+
+  // 로그인한 이메일이 사용자 식별자 (작성자/신청자 구분용)
+  var userId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  if (!userId) return; // 상단 가드가 로그인 페이지로 이동시킴
+
+  var ADMIN_EMAIL = "jaydenkyuwon@gmail.com";
+  // 관리자 여부는 서버가 내려준 상태 기준 (소유자 + 권한 부여받은 관리자)
+  var __meState = window.Api.getState();
+  var isAdmin = (__meState && __meState.me && __meState.me.isAdmin) || userId === ADMIN_EMAIL;
+
+  function loadUsers() {
+    try {
+      return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
+  // 삭제된 계정의 세션이 남아 있으면 강제 로그아웃
+  if (!loadUsers()[userId]) {
+    clearSession();
+    location.replace("login.html");
+    return;
+  }
+
+  // 이메일 → 닉네임 표시용
+  function nickOf(email) {
+    var u = loadUsers()[email];
+    return (u && u.nickname) ? u.nickname : email;
+  }
+
+  // 매너온도 색상: 10도 구간마다 변화 (낮으면 파랑=차가움, 높으면 빨강=뜨거움)
+  function tempColor(t) {
+    var hues = [225, 210, 190, 150, 95, 50, 35, 22, 10, 0];
+    var n = (typeof t === "number") ? t : 36.5;
+    var idx = Math.max(0, Math.min(9, Math.floor(n / 10)));
+    return "hsl(" + hues[idx] + ", 80%, 42%)";
+  }
+
+  // 상점: 해당 유저가 장착한 배경(공고/배너/사이트)의 CSS 값
+  function loadShop() {
+    // 상점은 이미지가 커서 localStorage에 저장하지 않고 메모리에 보관 (store.js)
+    return (window.Api && window.Api.getShop) ? window.Api.getShop() : [];
+  }
+  function bgValueFor(email, type) {
+    var u = loadUsers()[email];
+    if (!u || !u.equipped) return null;
+    // 해당 유저가 이 꾸미기 표시를 꺼두었으면 적용 안 함
+    if (u.cosmeticOn && u.cosmeticOn[type] === false) return null;
+    var id = u.equipped[type];
+    if (!id) return null;
+    var shop = loadShop();
+    for (var i = 0; i < shop.length; i++) { if (shop[i].id === id) return shop[i].value; }
+    return null;
+  }
+
+  // 프로필 사진(없으면 닉네임 첫 글자) 아바타
+  function avatarEl(email, size) {
+    var u = loadUsers()[email] || {};
+    var el;
+    if (u.photo) {
+      el = document.createElement("img");
+      el.src = u.photo;
+      el.alt = "";
+    } else {
+      el = document.createElement("span");
+      var nick = u.nickname || email || "?";
+      el.textContent = nick.charAt(0).toUpperCase();
+      el.style.fontSize = Math.round(size * 0.45) + "px";
+      el.setAttribute("aria-hidden", "true");
+    }
+    el.className = "avatar";
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    return el;
+  }
+
+  document.getElementById("user-email").textContent = nickOf(userId);
+  document.querySelector(".user-box").insertBefore(avatarEl(userId, 28), document.getElementById("user-email"));
+  var scoreChip = document.getElementById("user-score");
+  function renderScore() {
+    scoreChip.textContent = getScore(userId) + "점";
+  }
+  if (isAdmin) {
+    var adminBadge = document.createElement("span");
+    adminBadge.className = "badge";
+    adminBadge.textContent = "관리자";
+    document.querySelector(".user-box").insertBefore(adminBadge, document.getElementById("user-email"));
+
+    var adminLink = document.createElement("a");
+    adminLink.className = "logout-btn admin-link";
+    adminLink.href = "admin.html";
+    adminLink.textContent = "관리";
+    document.querySelector(".user-box").insertBefore(adminLink, document.getElementById("logout-btn"));
+  }
+  document.getElementById("logout-btn").addEventListener("click", function () {
+    window.Api.call("logout", {}).catch(function () {});
+    window.Api.clearAuth();
+    location.replace("login.html");
+  });
+
+
+  var posts = [];
+  function loadFromMirror() {
+    try {
+      posts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      posts = [];
+    }
+    posts.forEach(function (p) {
+      if (!p.applicants) p.applicants = [];
+      if (!p.applicantPts) p.applicantPts = {};
+      if (!p.comments) p.comments = [];
+      if (!p.chat) p.chat = [];
+    });
+  }
+  loadFromMirror();
+
+  // 서버 상태 반영 후 화면 갱신
+  function applyState() {
+    loadFromMirror();
+    if (chatPost) {
+      var np = null;
+      for (var i = 0; i < posts.length; i++) {
+        if (posts[i].id === chatPost.id) np = posts[i];
+      }
+      chatPost = np;
+      if (!chatPost && chatModal.open) chatModal.close();
+    }
+    render();
+    if (chatPost) renderChatMessages();
+  }
+
+  // 서버 액션 호출 → 성공/실패와 관계없이 최신 상태로 화면 갱신
+  function syncAction(action, payload) {
+    return window.Api.call(action, payload).then(function (d) {
+      applyState();
+      return d;
+    }).catch(function (e) {
+      alert(e.message || "요청이 실패했습니다.");
+      return window.Api.refresh().then(function () { applyState(); });
+    });
+  }
+
+  var activeTab = "rival";
+  var editingId = null; // null이면 새 공고 작성, 값이 있으면 해당 공고 수정
+
+  var COMMENT_LIMIT = 3; // 이 개수를 넘는 댓글은 접어서 표시
+  var expandedComments = {}; // 공고 id → 펼침 여부
+
+  var sortMode = "timeAsc";
+  var sorters = {
+    timeAsc: function (a, b) { return a.createdAt - b.createdAt; },
+    timeDesc: function (a, b) { return b.createdAt - a.createdAt; },
+    scoreAsc: function (a, b) { return (a.score - b.score) || (a.createdAt - b.createdAt); },
+    scoreDesc: function (a, b) { return (b.score - a.score) || (a.createdAt - b.createdAt); },
+    nameAsc: function (a, b) { return a.title.localeCompare(b.title, "ko"); }
+  };
+
+  var tabs = {
+    rival: document.getElementById("tab-rival"),
+    mate: document.getElementById("tab-mate"),
+    report: document.getElementById("tab-report")
+  };
+  var panels = {
+    rival: document.getElementById("panel-rival"),
+    mate: document.getElementById("panel-mate"),
+    report: document.getElementById("panel-report")
+  };
+  var lists = {
+    rival: document.getElementById("list-rival"),
+    mate: document.getElementById("list-mate")
+  };
+  var empties = {
+    rival: document.getElementById("empty-rival"),
+    mate: document.getElementById("empty-mate")
+  };
+  var counts = {
+    rival: document.getElementById("count-rival"),
+    mate: document.getElementById("count-mate"),
+    report: document.getElementById("count-report")
+  };
+
+  var modal = document.getElementById("post-modal");
+  var form = document.getElementById("post-form");
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+  }
+
+  function formatDate(ts) {
+    var d = new Date(ts);
+    function pad(n) { return n < 10 ? "0" + n : n; }
+    return d.getFullYear() + "." + pad(d.getMonth() + 1) + "." + pad(d.getDate()) +
+           " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function render() {
+    ["rival", "mate"].forEach(function (cat) {
+      // 승인 대기/거절 공고는 작성자 본인과 관리자에게만 보임
+      var items = posts.filter(function (p) {
+        return p.category === cat && (p.status === "active" || p.authorId === userId || isAdmin);
+      }).sort(sorters[sortMode]);
+      lists[cat].innerHTML = "";
+      items.forEach(function (p) {
+        var li = document.createElement("li");
+        li.className = "post";
+        // 작성자가 장착한 '공고 배경' 적용 (모두에게 보임)
+        // 글자 가독성을 위해 반투명 흰색을 위에 얹어 배경은 은은히 비치게 함
+        var postBg = bgValueFor(p.authorId, "postbg");
+        if (postBg) {
+          li.style.background = "linear-gradient(rgba(255,255,255,0.66),rgba(255,255,255,0.66))," + postBg;
+          li.style.backgroundSize = "cover";
+          li.style.backgroundPosition = "center";
+          li.classList.add("has-bg");
+        }
+
+        var isFull = p.applicants.length >= p.capacity;
+        var isExpired = typeof p.deadline === "number" && Date.now() > p.deadline;
+        var isAuthor = p.authorId === userId;
+        var canManage = isAuthor || isAdmin; // 관리자는 모든 공고 수정·삭제 가능
+        var hasApplied = p.applicants.indexOf(userId) !== -1;
+
+        var head = document.createElement("div");
+        head.className = "post-head";
+
+        var h2 = document.createElement("h2");
+        h2.textContent = p.title;
+        head.appendChild(h2);
+
+        if (p.status === "pending") {
+          var pendingBadge = document.createElement("span");
+          pendingBadge.className = "badge badge-outline";
+          pendingBadge.textContent = "승인 대기중";
+          head.appendChild(pendingBadge);
+        } else if (p.status === "rejected") {
+          var rejectedBadge = document.createElement("span");
+          rejectedBadge.className = "badge badge-outline";
+          rejectedBadge.textContent = "승인 거절됨";
+          head.appendChild(rejectedBadge);
+        } else if (isExpired) {
+          var expiredBadge = document.createElement("span");
+          expiredBadge.className = "badge";
+          expiredBadge.textContent = "모집 마감";
+          head.appendChild(expiredBadge);
+        } else if (isFull) {
+          var badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = "모집 완료";
+          head.appendChild(badge);
+        }
+
+        if (canManage) {
+          var editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "edit-btn";
+          editBtn.textContent = "수정";
+          editBtn.setAttribute("aria-label", '"' + p.title + '" 공고 수정');
+          editBtn.addEventListener("click", function () {
+            openEditModal(p);
+          });
+          head.appendChild(editBtn);
+
+          var delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "delete-btn";
+          delBtn.textContent = "삭제";
+          delBtn.setAttribute("aria-label", '"' + p.title + '" 공고 삭제');
+          delBtn.addEventListener("click", function () {
+            if (!confirm('"' + p.title + '" 공고를 삭제할까요?')) return;
+            syncAction("deletePost", { id: p.id });
+          });
+          head.appendChild(delBtn);
+        }
+
+        // 작성자 표시 (사진 · 닉네임 · 매너온도)
+        var authorRow = document.createElement("div");
+        authorRow.className = "post-author";
+        authorRow.appendChild(avatarEl(p.authorId, 20));
+        var authorName = document.createElement("span");
+        authorName.className = "author-name";
+        authorName.textContent = nickOf(p.authorId);
+        authorRow.appendChild(authorName);
+        var authorTemp = document.createElement("span");
+        authorTemp.className = "author-temp";
+        var authorUser = loadUsers()[p.authorId];
+        var authorT = (authorUser && typeof authorUser.temp === "number") ? authorUser.temp : 36.5;
+        authorTemp.textContent = "🌡 " + authorT.toFixed(1) + "°C";
+        authorTemp.style.color = tempColor(authorT);
+        authorTemp.style.fontWeight = "700";
+        authorRow.appendChild(authorTemp);
+
+        var detail = document.createElement("p");
+        detail.className = "detail";
+        detail.textContent = p.detail;
+
+        var foot = document.createElement("div");
+        foot.className = "post-foot";
+
+        var meta = document.createElement("p");
+        meta.className = "meta";
+        var metaText = "참여 점수 " + p.score + "점";
+        if (p.category === "rival") metaText += " · 승리 점수 " + (p.winScore || 10) + "점";
+        metaText += " · 신청 " + p.applicants.length + " / " + p.capacity + "명";
+        if (typeof p.deadline === "number") metaText += " · 기한 " + formatDate(p.deadline) + "까지";
+        metaText += " · " + formatDate(p.createdAt);
+        meta.textContent = metaText;
+        foot.appendChild(meta);
+
+        var actions = document.createElement("div");
+        actions.className = "post-actions";
+
+        // 라이벌 대결 승자 확정 (작성자 전용, 1회)
+        if (p.category === "rival" && isAuthor && !p.winner && p.status === "active" && p.applicants.length > 0) {
+          var winSel = document.createElement("select");
+          winSel.className = "win-select";
+          winSel.setAttribute("aria-label", "승자 선택");
+          [p.authorId].concat(p.applicants).forEach(function (em) {
+            var opt = document.createElement("option");
+            opt.value = em;
+            opt.textContent = nickOf(em) + (em === p.authorId ? " (나)" : "");
+            winSel.appendChild(opt);
+          });
+          var winBtn = document.createElement("button");
+          winBtn.type = "button";
+          winBtn.className = "chat-btn";
+          winBtn.textContent = "🏆 승자 확정";
+          winBtn.addEventListener("click", function () {
+            if (!confirm(nickOf(winSel.value) + " 님을 승자로 확정할까요? 승리 점수 " + (p.winScore || 10) + "점이 지급되며, 한 번만 가능합니다.")) return;
+            syncAction("declareWinner", { postId: p.id, email: winSel.value });
+          });
+          actions.appendChild(winSel);
+          actions.appendChild(winBtn);
+        }
+
+        // 참여자 채팅: 작성자, 참여 신청자, 관리자만 입장 가능
+        var canChat = isAuthor || isAdmin || hasApplied;
+        if (canChat) {
+          var chatBtn = document.createElement("button");
+          chatBtn.type = "button";
+          chatBtn.className = "chat-btn";
+          chatBtn.textContent = "참여자 채팅";
+          chatBtn.setAttribute("aria-label", '"' + p.title + '" 참여자 채팅 열기');
+          chatBtn.addEventListener("click", function () {
+            openChat(p);
+          });
+          actions.appendChild(chatBtn);
+        }
+
+        if (!isAuthor && !isAdmin && p.status === "active") {
+          var applyBtn = document.createElement("button");
+          applyBtn.type = "button";
+          applyBtn.className = "apply-btn";
+          if (isExpired) {
+            applyBtn.textContent = "모집 마감";
+            applyBtn.disabled = true;
+          } else if (hasApplied) {
+            applyBtn.classList.add("applied");
+            applyBtn.textContent = "신청 취소";
+          } else if (isFull) {
+            applyBtn.textContent = "모집 완료";
+            applyBtn.disabled = true;
+          } else {
+            applyBtn.textContent = "참여 신청";
+          }
+          applyBtn.addEventListener("click", function () {
+            syncAction("applyToggle", { id: p.id });
+          });
+          actions.appendChild(applyBtn);
+        }
+
+        // 참여자 → 공고 작성자 불참 신고
+        if (hasApplied && !isAuthor && !isAdmin) {
+          var reportAuthorBtn = document.createElement("button");
+          reportAuthorBtn.type = "button";
+          reportAuthorBtn.className = "kick-btn";
+          reportAuthorBtn.textContent = "작성자 신고";
+          reportAuthorBtn.setAttribute("aria-label", nickOf(p.authorId) + " 작성자 불참 신고");
+          reportAuthorBtn.addEventListener("click", function () {
+            var reason = prompt("공고 작성자 " + nickOf(p.authorId) + " 님의 불참을 관리자에게 신고합니다.\n사유를 입력하세요 (선택):", "");
+            if (reason === null) return; // 취소
+            syncAction("reportNoShow", { postId: p.id, email: p.authorId, reason: reason }).then(function (d) {
+              if (d && d.ok) alert("신고가 접수되었습니다. 관리자가 확인 후 매너온도를 조정합니다.");
+            });
+          });
+          actions.appendChild(reportAuthorBtn);
+        }
+
+        foot.appendChild(actions);
+
+        li.appendChild(head);
+        li.appendChild(authorRow);
+        li.appendChild(detail);
+
+        // 확정된 승자 표시
+        if (p.category === "rival" && p.winner) {
+          var winnerRow = document.createElement("p");
+          winnerRow.className = "winner-row";
+          winnerRow.textContent = "🏆 승자: " + nickOf(p.winner) + " (+" + (p.winnerPts || 0) + "점)";
+          li.appendChild(winnerRow);
+        }
+
+        li.appendChild(foot);
+
+        // 신청자 명단: 관리자(내보내기)와 공고 작성자(불참 신고)에게 표시
+        if ((isAdmin || isAuthor) && p.applicants.length > 0) {
+          var appList = document.createElement("ul");
+          appList.className = "applicant-list";
+          p.applicants.forEach(function (email) {
+            var row = document.createElement("li");
+            row.appendChild(avatarEl(email, 20));
+            var name = document.createElement("span");
+            name.textContent = nickOf(email);
+            name.style.flex = "1";
+            row.appendChild(name);
+
+            if (isAdmin) {
+              var kickBtn = document.createElement("button");
+              kickBtn.type = "button";
+              kickBtn.className = "kick-btn";
+              kickBtn.textContent = "내보내기";
+              kickBtn.setAttribute("aria-label", nickOf(email) + " 신청자 내보내기");
+              kickBtn.addEventListener("click", function () {
+                if (!confirm(nickOf(email) + " 님의 신청을 취소시킬까요?")) return;
+                syncAction("kickApplicant", { postId: p.id, email: email });
+              });
+              row.appendChild(kickBtn);
+            } else {
+              var reportBtn = document.createElement("button");
+              reportBtn.type = "button";
+              reportBtn.className = "kick-btn";
+              reportBtn.textContent = "불참 신고";
+              reportBtn.setAttribute("aria-label", nickOf(email) + " 불참 신고");
+              reportBtn.addEventListener("click", function () {
+                var reason = prompt(nickOf(email) + " 님의 불참을 관리자에게 신고합니다.\n사유를 입력하세요 (선택):", "");
+                if (reason === null) return; // 취소
+                syncAction("reportNoShow", { postId: p.id, email: email, reason: reason }).then(function (d) {
+                  if (d && d.ok) alert("불참 신고가 접수되었습니다. 관리자가 확인 후 매너온도를 조정합니다.");
+                });
+              });
+              row.appendChild(reportBtn);
+            }
+            appList.appendChild(row);
+          });
+          li.appendChild(appList);
+        }
+
+        // 댓글 (많으면 최신 몇 개만 보이고 나머지는 접기)
+        var commentsBox = document.createElement("div");
+        commentsBox.className = "comments";
+
+        var allComments = p.comments;
+        var collapsed = allComments.length > COMMENT_LIMIT && !expandedComments[p.id];
+        var shownComments = collapsed
+          ? allComments.slice(allComments.length - COMMENT_LIMIT)
+          : allComments;
+
+        if (collapsed) {
+          var moreBtn = document.createElement("button");
+          moreBtn.type = "button";
+          moreBtn.className = "comment-more";
+          moreBtn.textContent = "이전 댓글 " + (allComments.length - COMMENT_LIMIT) + "개 보기";
+          moreBtn.addEventListener("click", function () {
+            expandedComments[p.id] = true;
+            render();
+          });
+          commentsBox.appendChild(moreBtn);
+        } else if (allComments.length > COMMENT_LIMIT) {
+          var foldBtn = document.createElement("button");
+          foldBtn.type = "button";
+          foldBtn.className = "comment-more";
+          foldBtn.textContent = "댓글 접기";
+          foldBtn.addEventListener("click", function () {
+            expandedComments[p.id] = false;
+            render();
+          });
+          commentsBox.appendChild(foldBtn);
+        }
+
+        shownComments.forEach(function (c) {
+          var row = document.createElement("div");
+          row.className = "comment";
+          row.appendChild(avatarEl(c.author, 20));
+          var author = document.createElement("span");
+          author.className = "author";
+          author.textContent = nickOf(c.author);
+          var text = document.createElement("span");
+          text.className = "text";
+          text.textContent = c.text;
+          var when = document.createElement("span");
+          when.className = "when";
+          when.textContent = formatDate(c.createdAt);
+          row.appendChild(author);
+          row.appendChild(text);
+          row.appendChild(when);
+          if (c.author === userId || isAdmin) {
+            var del = document.createElement("button");
+            del.type = "button";
+            del.className = "comment-del";
+            del.textContent = "삭제";
+            del.setAttribute("aria-label", "댓글 삭제: " + c.text);
+            del.addEventListener("click", function () {
+              if (!confirm("댓글을 삭제할까요?")) return;
+              syncAction("deleteComment", { postId: p.id, commentId: c.id });
+            });
+            row.appendChild(del);
+          }
+          commentsBox.appendChild(row);
+        });
+
+        var cForm = document.createElement("form");
+        cForm.className = "comment-form";
+        var cInput = document.createElement("input");
+        cInput.type = "text";
+        cInput.maxLength = 200;
+        cInput.placeholder = "댓글을 입력하세요";
+        cInput.setAttribute("aria-label", '"' + p.title + '" 댓글 입력');
+        var cBtn = document.createElement("button");
+        cBtn.type = "submit";
+        cBtn.textContent = "등록";
+        cForm.appendChild(cInput);
+        cForm.appendChild(cBtn);
+        cForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var text = cInput.value.trim();
+          if (!text) return;
+          syncAction("addComment", { postId: p.id, text: text });
+        });
+        commentsBox.appendChild(cForm);
+        li.appendChild(commentsBox);
+
+        lists[cat].appendChild(li);
+      });
+      empties[cat].hidden = items.length > 0;
+      counts[cat].textContent = items.length > 0 ? " " + items.length : "";
+    });
+    renderMyReports();
+    renderScore();
+  }
+
+  /* ── 신고 탭 (내 신고 내역은 본인·관리자만 서버가 내려줌) ── */
+  function loadReports() {
+    try {
+      return JSON.parse(localStorage.getItem("recruit-reports")) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function renderMyReports() {
+    // 신고 대상 선택지 (본인·관리자 제외)
+    var sel = document.getElementById("report-target");
+    var cur = sel.value;
+    sel.innerHTML = "";
+    var users = loadUsers();
+    Object.keys(users)
+      .filter(function (em) { return em !== userId && em !== ADMIN_EMAIL; })
+      .sort(function (x, y) {
+        return (users[x].nickname || "").localeCompare(users[y].nickname || "", "ko");
+      })
+      .forEach(function (em) {
+        var opt = document.createElement("option");
+        opt.value = em;
+        opt.textContent = users[em].nickname || em;
+        sel.appendChild(opt);
+      });
+    if (cur) sel.value = cur;
+
+    // 내가 접수한 신고 목록 (최신순)
+    var list = document.getElementById("my-report-list");
+    list.innerHTML = "";
+    var mine = loadReports().slice().sort(function (x, y) { return y.createdAt - x.createdAt; });
+    mine.forEach(function (r) {
+      var li = document.createElement("li");
+      li.className = "post";
+
+      var head = document.createElement("div");
+      head.className = "post-head";
+      var h2 = document.createElement("h2");
+      h2.textContent = nickOf(r.reported) + (r.type === "fraud" ? " 부정행위 신고" : " 불참 신고");
+      var badge = document.createElement("span");
+      if (r.status === "pending") {
+        badge.className = "badge badge-outline";
+        badge.textContent = "대기 중";
+      } else if (r.status === "accepted") {
+        badge.className = "badge";
+        badge.textContent = "처리됨 · 온도 -" + (r.penalty || 0) + "°C" +
+          (r.scorePenalty ? " · 점수 -" + r.scorePenalty + "점" : "");
+      } else {
+        badge.className = "badge badge-outline";
+        badge.textContent = "기각됨";
+      }
+      head.appendChild(h2);
+      head.appendChild(badge);
+
+      var detail = document.createElement("p");
+      detail.className = "detail";
+      detail.textContent = "사유: " + (r.reason || "없음");
+
+      var meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = (r.postTitle ? '공고 "' + r.postTitle + '" · ' : "") +
+        "신고자 " + nickOf(r.reporter) + " · " + formatDate(r.createdAt);
+
+      li.appendChild(head);
+      li.appendChild(detail);
+      li.appendChild(meta);
+      list.appendChild(li);
+    });
+    document.getElementById("empty-report").hidden = mine.length > 0;
+    counts.report.textContent = mine.length > 0 ? " " + mine.length : "";
+  }
+
+  document.getElementById("report-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var target = document.getElementById("report-target").value;
+    var reason = document.getElementById("report-reason").value.trim();
+    if (!target) {
+      alert("신고할 대상을 선택해주세요.");
+      return;
+    }
+    if (!reason) {
+      alert("신고 사유를 입력해주세요.");
+      return;
+    }
+    syncAction("reportFraud", { email: target, reason: reason }).then(function (d) {
+      if (d && d.ok) {
+        document.getElementById("report-reason").value = "";
+        alert("신고가 접수되었습니다. 관리자 확인 후 처리됩니다.");
+      }
+    });
+  });
+
+  function switchTab(cat) {
+    activeTab = cat;
+    ["rival", "mate", "report"].forEach(function (c) {
+      tabs[c].setAttribute("aria-selected", c === cat ? "true" : "false");
+      panels[c].hidden = c !== cat;
+    });
+    // 신고 탭에서는 공고 정렬 도구 숨김
+    document.querySelector(".toolbar").style.display = cat === "report" ? "none" : "flex";
+  }
+
+  tabs.rival.addEventListener("click", function () { switchTab("rival"); });
+  tabs.mate.addEventListener("click", function () { switchTab("mate"); });
+  tabs.report.addEventListener("click", function () { switchTab("report"); });
+
+  document.getElementById("sort-select").addEventListener("change", function () {
+    sortMode = this.value;
+    render();
+  });
+
+  /* ── 참여자 채팅 ─────────────── */
+  var chatModal = document.getElementById("chat-modal");
+  var chatMessages = document.getElementById("chat-messages");
+  var chatInput = document.getElementById("chat-input");
+  var chatPost = null;   // 현재 열려 있는 채팅방의 공고
+  var chatPoll = null;   // 새 메시지 폴링 타이머
+
+  function formatTime(ts) {
+    var d = new Date(ts);
+    function pad(n) { return n < 10 ? "0" + n : n; }
+    return pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function renderChatMessages() {
+    if (!chatPost) return;
+    chatMessages.innerHTML = "";
+    var msgs = chatPost.chat || [];
+    if (msgs.length === 0) {
+      var emptyEl = document.createElement("p");
+      emptyEl.className = "chat-empty";
+      emptyEl.textContent = "아직 메시지가 없습니다. 첫 메시지를 보내보세요!";
+      chatMessages.appendChild(emptyEl);
+      return;
+    }
+    msgs.forEach(function (m) {
+      var row = document.createElement("div");
+      row.className = "chat-msg" + (m.author === userId ? " mine" : "");
+
+      var meta = document.createElement("div");
+      meta.className = "chat-meta";
+      if (m.author !== userId) {
+        meta.appendChild(avatarEl(m.author, 20));
+        var who = document.createElement("span");
+        who.textContent = nickOf(m.author);
+        meta.appendChild(who);
+      }
+      var when = document.createElement("span");
+      when.textContent = formatTime(m.createdAt);
+      meta.appendChild(when);
+
+      if (m.author === userId || isAdmin) {
+        var delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "comment-del";
+        delBtn.textContent = "삭제";
+        delBtn.setAttribute("aria-label", "메시지 삭제: " + m.text);
+        delBtn.addEventListener("click", function () {
+          if (!confirm("메시지를 삭제할까요?")) return;
+          syncAction("deleteChat", { postId: chatPost.id, chatId: m.id });
+        });
+        meta.appendChild(delBtn);
+      }
+
+      var bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+      bubble.textContent = m.text;
+
+      row.appendChild(meta);
+      row.appendChild(bubble);
+      chatMessages.appendChild(row);
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function openChat(p) {
+    chatPost = p;
+    document.getElementById("chat-title").textContent = p.title;
+    renderChatMessages();
+    chatModal.showModal();
+    // 채팅방이 열려 있는 동안 3초마다 서버에서 새 메시지 확인
+    chatPoll = setInterval(function () {
+      window.Api.peek().then(function (state) {
+        if (!chatPost || !state) return;
+        var sp = (state.posts || []).filter(function (x) { return x.id === chatPost.id; })[0];
+        if (sp && JSON.stringify(sp.chat || []) !== JSON.stringify(chatPost.chat || [])) {
+          chatPost.chat = sp.chat || [];
+          renderChatMessages();
+        }
+      });
+    }, 3000);
+  }
+
+  document.getElementById("chat-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = chatInput.value.trim();
+    if (!text || !chatPost) return;
+    chatInput.value = "";
+    syncAction("sendChat", { postId: chatPost.id, text: text });
+  });
+
+  document.getElementById("chat-close").addEventListener("click", function () {
+    chatModal.close();
+  });
+
+  chatModal.addEventListener("close", function () {
+    clearInterval(chatPoll);
+    chatPoll = null;
+    chatPost = null;
+    chatInput.value = "";
+  });
+
+  var modalTitle = document.getElementById("modal-title");
+  var submitBtn = document.getElementById("submit-btn");
+  var capacityInput = document.getElementById("post-capacity");
+  var winScoreField = document.getElementById("win-score-field");
+  var winScoreInput = document.getElementById("post-winscore");
+
+  var deadlineInput = document.getElementById("post-deadline");
+
+  // timestamp → datetime-local 입력값 (로컬 시간대 기준)
+  function toLocalInput(ts) {
+    var d = new Date(ts);
+    function pad(n) { return n < 10 ? "0" + n : n; }
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+           "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  // 승리 점수는 라이벌 공고 전용 — 동료 선택 시 숨김
+  function updateWinVisibility() {
+    winScoreField.hidden = document.getElementById("cat-mate").checked;
+  }
+  document.getElementById("cat-rival").addEventListener("change", updateWinVisibility);
+  document.getElementById("cat-mate").addEventListener("change", updateWinVisibility);
+
+  document.getElementById("open-modal").addEventListener("click", function () {
+    editingId = null;
+    form.reset();
+    capacityInput.min = 1;
+    modalTitle.textContent = "모집 공고 작성";
+    submitBtn.textContent = "올리기";
+    // 현재 보고 있는 탭을 기본 선택으로 (신고 탭이면 라이벌)
+    document.getElementById(activeTab === "mate" ? "cat-mate" : "cat-rival").checked = true;
+    deadlineInput.value = toLocalInput(Date.now() + 7 * 24 * 3600 * 1000); // 기본 7일 뒤
+    deadlineInput.min = toLocalInput(Date.now());
+    updateWinVisibility();
+    modal.showModal();
+  });
+
+  function openEditModal(p) {
+    editingId = p.id;
+    form.reset();
+    document.getElementById(p.category === "rival" ? "cat-rival" : "cat-mate").checked = true;
+    document.getElementById("post-title").value = p.title;
+    document.getElementById("post-detail").value = p.detail;
+    document.getElementById("post-score").value = p.score;
+    winScoreInput.value = p.winScore || 10;
+    updateWinVisibility();
+    capacityInput.value = p.capacity;
+    // 이미 신청한 인원보다 적게 줄일 수 없음
+    capacityInput.min = Math.max(1, p.applicants.length);
+    deadlineInput.value = toLocalInput(
+      typeof p.deadline === "number" ? p.deadline : Date.now() + 7 * 24 * 3600 * 1000
+    );
+    deadlineInput.min = toLocalInput(Date.now());
+    modalTitle.textContent = "모집 공고 수정";
+    submitBtn.textContent = "수정 완료";
+    modal.showModal();
+  }
+
+  document.getElementById("cancel-modal").addEventListener("click", function () {
+    modal.close();
+  });
+
+  form.addEventListener("submit", function (e) {
+    var data = new FormData(form);
+    var title = (data.get("title") || "").trim();
+    var detail = (data.get("detail") || "").trim();
+    var category = data.get("category");
+    var capacity = parseInt(data.get("capacity"), 10);
+    var score = parseInt(data.get("score"), 10);
+    var winScore = parseInt(data.get("winScore"), 10);
+
+    if (!title || !detail || !(capacity >= 1) || !(score >= 1)) {
+      e.preventDefault();
+      return;
+    }
+    if (category === "rival" && !(winScore >= 1)) {
+      e.preventDefault();
+      return;
+    }
+    var deadlineStr = data.get("deadline");
+    var deadline = deadlineStr ? new Date(deadlineStr).getTime() : NaN;
+    if (!(deadline > Date.now())) {
+      alert("모집 기한은 현재 시각 이후로 설정해주세요.");
+      e.preventDefault();
+      return;
+    }
+
+    // 점수 결정/권한 검증은 서버가 처리 (기본값이 아니면 관리자 승인 필요)
+    var payload = { category: category, title: title, detail: detail, capacity: capacity, score: score, winScore: winScore, deadline: deadline };
+    if (editingId) {
+      payload.id = editingId;
+      syncAction("updatePost", payload).then(function () { switchTab(category); });
+    } else {
+      syncAction("createPost", payload).then(function () { switchTab(category); });
+    }
+  });
+
+  render();
+});
+</script>
+
+</body>
+</html>
