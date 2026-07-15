@@ -1173,11 +1173,27 @@ window.__storeReady.then(function () {
         // 작성자 표시 (사진 · 닉네임 · 매너온도)
         var authorRow = document.createElement("div");
         authorRow.className = "post-author";
-        authorRow.appendChild(avatarEl(p.authorId, 20));
+        var authorAvatar = avatarEl(p.authorId, 20);
+        authorRow.appendChild(authorAvatar);
         var authorName = document.createElement("span");
         authorName.className = "author-name";
         authorName.textContent = nickOf(p.authorId);
         authorRow.appendChild(authorName);
+        // 작성자(사진·이름) 클릭 → 프로필 보기
+        var goAuthor = function (e) {
+          e.stopPropagation();
+          location.href = "user.html?u=" + encodeURIComponent(nickOf(p.authorId));
+        };
+        [authorAvatar, authorName].forEach(function (el) {
+          el.style.cursor = "pointer";
+          el.setAttribute("role", "link");
+          el.tabIndex = 0;
+          el.title = "프로필 보기";
+          el.addEventListener("click", goAuthor);
+          el.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { goAuthor(e); }
+          });
+        });
         var authorTemp = document.createElement("span");
         authorTemp.className = "author-temp";
         var authorUser = loadUsers()[p.authorId];

@@ -411,6 +411,18 @@ window.__storeReady.then(function () {
     li.appendChild(avatar);
     li.appendChild(who);
     li.appendChild(scoreEl);
+
+    // 행 클릭 → 해당 사용자 프로필로 이동
+    li.style.cursor = "pointer";
+    li.setAttribute("role", "link");
+    li.tabIndex = 0;
+    li.setAttribute("aria-label", r.nickname + " 프로필 보기");
+    var goProfile = function () { location.href = "user.html?u=" + encodeURIComponent(r.nickname); };
+    li.addEventListener("click", goProfile);
+    li.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goProfile(); }
+    });
+
     list.appendChild(li);
   });
 

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>프로필 — 모집 게시판</title>
+<script>
+  if (!localStorage.getItem("recruit-session") && !sessionStorage.getItem("recruit-session")) {
+    location.replace("login.html");
+  }
+</script>
+<script src="store.js?v=6"></script>
+<style>
+  :root {
+    --bg: hsl(0, 0%, 100%);
+    --fg: hsl(0, 0%, 7%);
+    --fg-soft: hsl(0, 0%, 40%);
+    --line: hsl(0, 0%, 88%);
+    --surface: hsl(0, 0%, 97%);
+    --accent: hsl(217, 80%, 46%);
+    --accent-strong: hsl(217, 85%, 38%);
+    --accent-soft: hsl(217, 80%, 96%);
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-6: 24px; --space-8: 32px; --space-12: 48px;
+    --radius: 8px;
+    --text-sm: 0.8125rem; --text-base: 1rem; --text-lg: 1.25rem; --text-xl: 1.5625rem;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.6; min-height: 100vh;
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-12); }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-6);
+  }
+  header h1 { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; }
+  .user-box { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .nav-btn {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-radius: var(--radius); font: inherit; font-size: var(--text-sm); font-weight: 600;
+    padding: var(--space-1) var(--space-3); cursor: pointer; text-decoration: none;
+    display: inline-block; transition: border-color 150ms ease-out;
+  }
+  .nav-btn:hover { border-color: var(--fg); }
+  .nav-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  .card { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .banner {
+    height: 140px; background: var(--surface); background-size: cover;
+    background-position: center; background-repeat: no-repeat;
+  }
+  .profile-head { padding: 0 var(--space-6) var(--space-6); }
+  .avatar-wrap { margin-top: -40px; margin-bottom: var(--space-3); }
+  .avatar {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--surface); border: 3px solid var(--bg);
+    color: var(--fg); font-weight: 700; overflow: hidden; flex-shrink: 0; object-fit: cover;
+    box-shadow: 0 1px 4px hsla(0,0%,0%,0.12);
+  }
+  .name-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .name-row h2 { font-size: var(--text-lg); font-weight: 800; letter-spacing: -0.01em; word-break: break-all; }
+  .me-chip {
+    font-size: var(--text-sm); font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); border: 1px solid var(--accent);
+    border-radius: var(--space-1); padding: 0 var(--space-2);
+  }
+  .temp { font-weight: 700; margin-top: var(--space-1); }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--line); margin-top: var(--space-4);
+  }
+  .stat { padding: var(--space-4) var(--space-2); text-align: center; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  .stat .num { font-size: var(--text-lg); font-weight: 800; letter-spacing: -0.01em; }
+  .stat .lbl { font-size: var(--text-sm); color: var(--fg-soft); }
+
+  .tier {
+    display: inline-block; font-size: var(--text-sm); font-weight: 700;
+    border-radius: var(--space-1); padding: 0 var(--space-2); vertical-align: middle; white-space: nowrap;
+  }
+  .tier-seed { color: hsl(140,55%,26%); background: hsl(140,50%,90%); border: 1px solid hsl(140,40%,72%); }
+  .tier-bronze { color:#fff; background: hsl(25,52%,44%); border: 1px solid hsl(25,52%,44%); }
+  .tier-silver { color: hsl(210,22%,24%); background: hsl(210,14%,72%); border: 1px solid hsl(210,14%,72%); }
+  .tier-gold { color: hsl(40,85%,22%); background: hsl(44,88%,54%); border: 1px solid hsl(44,88%,54%); }
+  .tier-platinum { color:#fff; background: hsl(190,45%,46%); border: 1px solid hsl(190,45%,46%); }
+  .tier-dia { color:#fff; background: hsl(205,85%,55%); border: 1px solid hsl(205,85%,55%); font-weight: 800; }
+
+  .section { margin-top: var(--space-8); }
+  .section h3 { font-size: var(--text-base); font-weight: 700; margin-bottom: var(--space-3); }
+  .post-item {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2);
+    display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
+  }
+  .post-item .title { font-weight: 600; word-break: break-all; }
+  .cat-chip {
+    font-size: var(--text-sm); font-weight: 700; padding: 0 var(--space-2);
+    border-radius: var(--space-1); background: var(--surface); border: 1px solid var(--line);
+    color: var(--fg-soft); white-space: nowrap;
+  }
+  .empty { color: var(--fg-soft); font-size: var(--text-sm); }
+  .notfound { text-align: center; padding: var(--space-12) 0; color: var(--fg-soft); }
+
+  @media (max-width: 480px) {
+    .container { padding: var(--space-6) var(--space-4) var(--space-8); }
+    header h1 { font-size: var(--text-lg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>프로필</h1>
+    <div class="user-box">
+      <a class="nav-btn" href="index.html">게시판</a>
+      <a class="nav-btn" href="ranking.html">랭킹</a>
+      <button type="button" class="nav-btn" id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <div id="content"></div>
+</div>
+
+<script>
+window.__storeReady.then(function () {
+  var SESSION_KEY = "recruit-session";
+  var ADMIN_EMAIL = "jaydenkyuwon@gmail.com";
+  var myId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  if (!myId) return;
+
+  document.getElementById("logout-btn").addEventListener("click", function () {
+    window.Api.call("logout", {}).catch(function () {});
+    window.Api.clearAuth();
+    location.replace("login.html");
+  });
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  var state = window.Api.getState() || {};
+  var users = state.users || loadJSON("recruit-users", {});
+  var scores = state.scores || loadJSON("recruit-scores", {});
+  var posts = state.posts || loadJSON("recruit-posts", []);
+  var shop = window.Api.getShop();
+
+  // URL ?u=<닉네임> 으로 대상 지정 (이메일은 URL에 노출하지 않음)
+  var params = new URLSearchParams(location.search);
+  var wantNick = params.get("u") || "";
+  var targetEmail = Object.keys(users).filter(function (em) {
+    return (users[em].nickname || "") === wantNick;
+  })[0] || null;
+
+  var content = document.getElementById("content");
+
+  if (!targetEmail) {
+    content.innerHTML = '<p class="notfound">사용자를 찾을 수 없습니다.<br>이미 탈퇴했거나 닉네임이 바뀌었을 수 있습니다.</p>';
+    return;
+  }
+
+  var u = users[targetEmail];
+  var cumulative = (scores[targetEmail] || 0) + (u.spent || 0);
+  var isMe = targetEmail === myId;
+
+  function tierOf(score) {
+    if (score <= 10) return { name: "새싹", cls: "tier-seed" };
+    if (score <= 50) return { name: "브론즈", cls: "tier-bronze" };
+    if (score <= 200) return { name: "실버", cls: "tier-silver" };
+    if (score <= 500) return { name: "골드", cls: "tier-gold" };
+    if (score <= 1000) return { name: "플래티넘", cls: "tier-platinum" };
+    return { name: "다이아", cls: "tier-dia" };
+  }
+  function tempColor(t) {
+    var hues = [225, 210, 190, 150, 95, 50, 35, 22, 10, 0];
+    var n = (typeof t === "number") ? t : 36.5;
+    var idx = Math.max(0, Math.min(9, Math.floor(n / 10)));
+    return "hsl(" + hues[idx] + ", 80%, 42%)";
+  }
+  function formatDate(ts) {
+    if (!ts) return "-";
+    var d = new Date(ts);
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "." + p(d.getMonth() + 1) + "." + p(d.getDate());
+  }
+
+  // 랭킹 순위 계산 (관리자 제외, 누적 내림차순)
+  function rankOf(email) {
+    if (email === ADMIN_EMAIL) return null;
+    var arr = Object.keys(users)
+      .filter(function (em) { return em !== ADMIN_EMAIL; })
+      .map(function (em) { return { em: em, s: (scores[em] || 0) + (users[em].spent || 0), j: users[em].createdAt || 0 }; })
+      .sort(function (a, b) { return (b.s - a.s) || (a.j - b.j); });
+    var prevS = null, prevR = 0;
+    for (var i = 0; i < arr.length; i++) {
+      var rk = (arr[i].s === prevS) ? prevR : i + 1;
+      prevS = arr[i].s; prevR = rk;
+      if (arr[i].em === email) return rk;
+    }
+    return null;
+  }
+
+  var card = document.createElement("div");
+  card.className = "card";
+
+  // 배너 (장착 + 표시 on 일 때만)
+  var bannerOn = !(u.cosmeticOn && u.cosmeticOn.banner === false);
+  var bannerId = (u.equipped && bannerOn) ? u.equipped.banner : null;
+  var bannerItem = null;
+  for (var i = 0; i < shop.length; i++) { if (shop[i].id === bannerId) { bannerItem = shop[i]; break; } }
+  var banner = document.createElement("div");
+  banner.className = "banner";
+  if (bannerItem) {
+    var fit = (u.bannerFit === "contain") ? "contain" : "cover";
+    var pos = (typeof u.bannerPos === "number") ? u.bannerPos : 50;
+    banner.style.background = bannerItem.value;
+    banner.style.backgroundColor = "var(--surface)";
+    banner.style.backgroundSize = fit;
+    banner.style.backgroundPosition = "center " + pos + "%";
+    banner.style.backgroundRepeat = "no-repeat";
+  }
+  card.appendChild(banner);
+
+  var head = document.createElement("div");
+  head.className = "profile-head";
+
+  // 아바타
+  var aw = document.createElement("div");
+  aw.className = "avatar-wrap";
+  var avatar;
+  if (u.photo) {
+    avatar = document.createElement("img");
+    avatar.src = u.photo; avatar.alt = (u.nickname || "") + " 프로필 사진";
+  } else {
+    avatar = document.createElement("span");
+    avatar.textContent = (u.nickname || "?").charAt(0).toUpperCase();
+    avatar.style.fontSize = "28px";
+    avatar.setAttribute("aria-hidden", "true");
+  }
+  avatar.className = "avatar";
+  avatar.style.width = "80px"; avatar.style.height = "80px";
+  aw.appendChild(avatar);
+  head.appendChild(aw);
+
+  // 닉네임 + 티어 + (나)
+  var nameRow = document.createElement("div");
+  nameRow.className = "name-row";
+  var h2 = document.createElement("h2");
+  h2.textContent = u.nickname || "-";
+  nameRow.appendChild(h2);
+  if (targetEmail === ADMIN_EMAIL) {
+    var adminBadge = document.createElement("span");
+    adminBadge.className = "me-chip";
+    adminBadge.textContent = "관리자";
+    nameRow.appendChild(adminBadge);
+  } else {
+    var tier = tierOf(cumulative);
+    var tierEl = document.createElement("span");
+    tierEl.className = "tier " + tier.cls;
+    tierEl.textContent = tier.name;
+    nameRow.appendChild(tierEl);
+  }
+  if (isMe) {
+    var meChip = document.createElement("span");
+    meChip.className = "me-chip";
+    meChip.textContent = "나";
+    nameRow.appendChild(meChip);
+  }
+  head.appendChild(nameRow);
+
+  // 매너온도
+  var temp = (typeof u.temp === "number") ? u.temp : 36.5;
+  var tempEl = document.createElement("p");
+  tempEl.className = "temp";
+  tempEl.textContent = "🌡 매너온도 " + temp.toFixed(1) + "°C";
+  tempEl.style.color = tempColor(temp);
+  head.appendChild(tempEl);
+
+  var joined = document.createElement("p");
+  joined.style.color = "var(--fg-soft)";
+  joined.style.fontSize = "var(--text-sm)";
+  joined.textContent = "가입일 " + formatDate(u.createdAt);
+  head.appendChild(joined);
+
+  card.appendChild(head);
+
+  // 통계 (누적 점수 / 순위 / 작성·참여)
+  var authored = posts.filter(function (p) { return p.authorId === targetEmail; });
+  var activeAuthored = authored.filter(function (p) { return p.status === "active"; });
+  var appliedCount = posts.filter(function (p) { return (p.applicants || []).indexOf(targetEmail) !== -1; }).length;
+  var rk = rankOf(targetEmail);
+
+  var stats = document.createElement("div");
+  stats.className = "stats";
+  function statBox(num, lbl) {
+    var b = document.createElement("div"); b.className = "stat";
+    var n = document.createElement("div"); n.className = "num"; n.textContent = num;
+    var l = document.createElement("div"); l.className = "lbl"; l.textContent = lbl;
+    b.appendChild(n); b.appendChild(l); return b;
+  }
+  stats.appendChild(statBox(cumulative + "점", "누적 포인트"));
+  stats.appendChild(statBox(rk ? (rk + "위") : "-", "랭킹"));
+  stats.appendChild(statBox(authored.length + " · " + appliedCount, "작성 · 참여"));
+  card.appendChild(stats);
+
+  content.appendChild(card);
+
+  // 본인이면 내 정보 수정 링크
+  if (isMe) {
+    var editWrap = document.createElement("div");
+    editWrap.style.marginTop = "var(--space-4)";
+    editWrap.style.textAlign = "center";
+    var editLink = document.createElement("a");
+    editLink.className = "nav-btn";
+    editLink.href = "profile.html";
+    editLink.textContent = "내 정보 수정";
+    editWrap.appendChild(editLink);
+    content.appendChild(editWrap);
+  }
+
+  // 진행 중인 공고 목록 (누구나 볼 수 있는 active 공고만)
+  var catLabel = { rival: "라이벌", mate: "동료" };
+  var section = document.createElement("div");
+  section.className = "section";
+  var h3 = document.createElement("h3");
+  h3.textContent = "진행 중인 공고 (" + activeAuthored.length + ")";
+  section.appendChild(h3);
+
+  if (activeAuthored.length === 0) {
+    var em = document.createElement("p");
+    em.className = "empty";
+    em.textContent = "진행 중인 공고가 없습니다.";
+    section.appendChild(em);
+  } else {
+    activeAuthored.forEach(function (p) {
+      var row = document.createElement("div");
+      row.className = "post-item";
+      var t = document.createElement("span");
+      t.className = "title";
+      t.textContent = p.title;
+      var chip = document.createElement("span");
+      chip.className = "cat-chip";
+      chip.textContent = (catLabel[p.category] || p.category) + " · 신청 " + (p.applicants || []).length + "/" + p.capacity;
+      row.appendChild(t);
+      row.appendChild(chip);
+      section.appendChild(row);
+    });
+  }
+  content.appendChild(section);
+});
+</script>
+
+</body>
+</html>
