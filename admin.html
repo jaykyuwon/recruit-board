@@ -1216,8 +1216,9 @@ window.__storeReady.then(function () {
 
       var meta = document.createElement("p");
       meta.className = "meta";
-      // 업로드 이미지는 데이터 URL이 매우 길어 요약 표시
-      meta.textContent = "배경 값: " + (it.value.indexOf('url("data:') === 0 ? "업로드 이미지" : it.value);
+      // 업로드 이미지는 URL/데이터URL이므로 요약 표시
+      var isImg = it.value.indexOf('url("data:') === 0 || it.value.indexOf('url("/uploads/') === 0;
+      meta.textContent = "배경 값: " + (isImg ? "업로드 이미지" : it.value);
       li.appendChild(meta);
 
       var actions = document.createElement("div");

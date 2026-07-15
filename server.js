@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 8931;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DATA_FILE = path.join(DATA_DIR, "data.json");
+const UPLOAD_DIR = path.join(DATA_DIR, "uploads"); // 상점 업로드 이미지 (base64를 DB에 넣지 않음)
 const MAX_BODY = 45 * 1024 * 1024; // 45MB (상점 배경 이미지 업로드 넉넉히 포함, base64 팽창분 감안)
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30일
 const ADMIN_EMAIL = "jaydenkyuwon@gmail.com";
@@ -27,16 +28,52 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
   ".ico": "image/x-icon"
 };
 
 /* ── 저장소 ─────────────────────────────── */
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 let db = { users: {}, posts: [], scores: {}, sessions: {}, reports: [], shop: [], spent: {} };
 
 // 상점 아이템 종류: 개인 배너 / 개인 공고 배경 / 사이트 배경
 const SHOP_TYPES = ["banner", "postbg", "sitebg"];
+
+/* ── 상점 이미지 파일화 ──────────────────────
+   업로드 이미지를 base64로 DB(data.json)에 넣으면 파일이 수십 MB로 비대해져
+   매 저장/전송이 느려진다. 이미지는 data/uploads/ 에 파일로 저장하고
+   DB에는 짧은 URL(url("/uploads/xxx.png"))만 남긴다. 색/그라데이션은 그대로 둔다. */
+const EXT_BY_MIME = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp" };
+function externalizeImage(id, value) {
+  const m = /^url\(\s*["']?data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)["']?\s*\)\s*$/i.exec(value);
+  if (!m) return value; // 이미지 data URI 아님 (색·그라데이션·이미 URL)
+  const ext = EXT_BY_MIME[m[1].toLowerCase()];
+  if (!ext) return value; // 지원하지 않는 형식은 건드리지 않음
+  const fname = id + "." + ext;
+  fs.writeFileSync(path.join(UPLOAD_DIR, fname), Buffer.from(m[2], "base64"));
+  return 'url("/uploads/' + fname + '")';
+}
+function deleteItemFile(item) {
+  if (!item || typeof item.value !== "string") return;
+  const m = /^url\(\s*["']?\/uploads\/([^"')\\/]+)["']?\s*\)\s*$/i.exec(item.value);
+  if (!m) return;
+  fs.unlink(path.join(UPLOAD_DIR, path.basename(m[1])), () => {});
+}
+// 기존 base64 상품을 파일로 1회 이전 (부팅 시)
+function migrateShopImages() {
+  let changed = false;
+  db.shop.forEach((it) => {
+    if (typeof it.value === "string" && /^url\(\s*["']?data:image\//i.test(it.value)) {
+      const nv = externalizeImage(it.id, it.value);
+      if (nv !== it.value) { it.value = nv; changed = true; }
+    }
+  });
+  if (changed) saveDb();
+}
 
 function loadDb() {
   try {
@@ -782,10 +819,9 @@ const actions = {
     const value = String(p.value || "").trim();
     if (!value) throw err(400, "배경 값(색/그라데이션/이미지)을 입력해주세요.");
     if (value.length > 40000000) throw err(400, "이미지가 너무 큽니다. 더 작은 파일을 사용해주세요.");
-    db.shop.push({
-      id: crypto.randomBytes(8).toString("hex"),
-      type, name, price, value, createdAt: Date.now()
-    });
+    const id = crypto.randomBytes(8).toString("hex");
+    const storedValue = externalizeImage(id, value); // 이미지면 파일로 저장하고 URL만 보관
+    db.shop.push({ id, type, name, price, value: storedValue, createdAt: Date.now() });
     return {};
   },
 
@@ -793,6 +829,7 @@ const actions = {
     if (!isAdminEmail(auth.email)) throw err(403, "관리자만 상품을 삭제할 수 있습니다.");
     const idx = db.shop.findIndex((x) => x.id === p.id);
     if (idx === -1) throw err(404, "상품을 찾을 수 없습니다.");
+    deleteItemFile(db.shop[idx]); // 업로드 이미지 파일도 정리
     db.shop.splice(idx, 1);
     // 소유·장착 기록에서도 제거 (환불은 없음)
     Object.keys(db.users).forEach((em) => {
@@ -909,6 +946,7 @@ loadDb();
 ensureAdmin();
 normalizeUsers();
 normalizePosts();
+migrateShopImages(); // 기존 base64 상점 이미지를 파일로 이전 (data.json 경량화)
 saveDb();
 
 function sendJson(res, status, obj) {
@@ -966,6 +1004,23 @@ const server = http.createServer((req, res) => {
         saveDb();
         return sendJson(res, e.status || 500, { ok: false, error: e.message || "서버 오류" });
       }
+    });
+    return;
+  }
+
+  /* 업로드 이미지 (상점 배경) — 브라우저/CDN 캐시 허용 */
+  if (pathname.startsWith("/uploads/")) {
+    const rel = pathname.slice("/uploads/".length);
+    const upFull = path.normalize(path.join(UPLOAD_DIR, rel));
+    if (!upFull.startsWith(UPLOAD_DIR + path.sep)) { res.writeHead(404); res.end("404 Not Found"); return; }
+    fs.readFile(upFull, (e, bytes) => {
+      if (e) { res.writeHead(404); res.end("404 Not Found"); return; }
+      const uext = path.extname(upFull).toLowerCase();
+      res.writeHead(200, {
+        "Content-Type": MIME[uext] || "application/octet-stream",
+        "Cache-Control": "public, max-age=31536000, immutable"
+      });
+      res.end(bytes);
     });
     return;
   }
