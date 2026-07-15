@@ -763,7 +763,10 @@ const actions = {
     if (!db.users[email]) throw err(404, "회원을 찾을 수 없습니다.");
     const delta = parseInt(p.delta, 10);
     if (!delta || Math.abs(delta) > 9999) throw err(400, "조정 점수가 올바르지 않습니다.");
-    addScore(email, delta);
+    // 차감은 누적(랭킹)에서 실제로 빠지도록 removeEarned 사용 (잔액→부족분은 spent에서).
+    // 지급(양수)은 잔액에 그대로 더한다.
+    if (delta >= 0) addScore(email, delta);
+    else removeEarned(email, -delta);
     return {};
   },
 
